@@ -4,11 +4,13 @@ import 'package:app_finanzas/config/pallete.dart';
 class LoginField extends StatefulWidget {
   final String hintText;
   final bool isPassword;
+  final TextEditingController? controller; // Agregamos el controlador
 
   const LoginField({
     super.key,
     required this.hintText,
-    this.isPassword = false, // Por defecto es un campo normal
+    this.isPassword = false,
+    this.controller,
   });
 
   @override
@@ -16,16 +18,15 @@ class LoginField extends StatefulWidget {
 }
 
 class _LoginFieldState extends State<LoginField> {
-  bool _obscureText = true; // Estado para mostrar u ocultar el texto
+  bool _obscureText = true;
 
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(
-        maxWidth: 300,
-      ),
+      constraints: const BoxConstraints(maxWidth: 300),
       child: TextFormField(
-        obscureText: widget.isPassword ? _obscureText : false, // Oculta si es password
+        controller: widget.controller, // Vincular el controlador
+        obscureText: widget.isPassword ? _obscureText : false,
         decoration: InputDecoration(
           contentPadding: const EdgeInsets.all(27),
           enabledBorder: OutlineInputBorder(
@@ -57,6 +58,12 @@ class _LoginFieldState extends State<LoginField> {
                 )
               : null,
         ),
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return 'Este campo es obligatorio';
+          }
+          return null;
+        },
       ),
     );
   }

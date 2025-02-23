@@ -30,17 +30,17 @@ class User {
   /// **Factory constructor para convertir un JSON a un objeto User**
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'],
-      username: json['username'],
-      firstname: json['firstname'],
-      lastname: json['lastname'],
-      email: json['email'],
-      password: json['password'],
-      address: json['address'],
-      city: json['city'],
-      country: json['country'],
-      postal: json['postal'],
-      about: json['about'],
+      id: json['id'] ?? 0,
+      username: json['username'] ?? "",
+      firstname: json['firstname'] ?? "",
+      lastname: json['lastname'] ?? "",
+      email: json['email'] ?? "",
+      password: json['password'] ?? "",
+      address: json['address'] ?? "",
+      city: json['city'] ?? "",
+      country: json['country'] ?? "",
+      postal: json['postal'] ?? "",
+      about: json['about'] ?? "",
       emailVerifiedAt: json['email_verified_at'] != null
           ? DateTime.parse(json['email_verified_at'])
           : null,

@@ -3,11 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+import 'package:app_finanzas/screen/home_screen.dart';
 import 'package:app_finanzas/screen/auth/login_screen.dart';
 import 'package:app_finanzas/app/controller/auth_provider.dart';
 import 'package:app_finanzas/app/controller/transactions_provider.dart';
 import 'package:app_finanzas/app/controller/category_expense_provider.dart';
-
 
 Future<void> main() async {
   await dotenv.load(); // Carga las variables de entorno
@@ -27,14 +27,18 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CategoryExpenseProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
       ],
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        title: 'Gestiona tus finanzas',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.blue),
-          useMaterial3: true,
-        ),
-        home: const LoginScreen(),
+      child: Consumer<AuthProvider>(
+        builder: (context, authProvider, child) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            title: 'Gestiona tus finanzas',
+            theme: ThemeData(
+              colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.blue),
+              useMaterial3: true,
+            ),
+            home: authProvider.isAuthenticated ? const HomeScreen() : const LoginScreen(),
+          );
+        },
       ),
     );
   }

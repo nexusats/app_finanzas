@@ -4,53 +4,58 @@ import 'package:http/http.dart' as http;
 
 class AuthService {
   final String baseUrl = dotenv.env['API_BASE_URL'] ?? "";
-
   final String module = "auth";
 
-  Future<bool> login(Map<String, dynamic> data) async {
+  /// **Login de usuario**
+  Future<Map<String, dynamic>> login(Map<String, dynamic> data) async {
     final url = Uri.parse('$baseUrl/$module/login');
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode(data),
-    );
 
-    if (response.statusCode == 201) {
-      return true;
-    } else {
-      return false;
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(data),
+      );
+
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {
+          "success": true,
+          "message": responseData["message"],
+          "user": responseData["user"],
+          "token": responseData["token"],
+        };
+      } else {
+        return {"success": false, "message": responseData["message"] ?? "Error en las credenciales"};
+      }
+    } catch (error) {
+      return {"success": false, "message": "Error de conexión: $error"};
     }
   }
 
-  // Obtener usuario logeado
-  Future<Map<String, dynamic>?> getUser(int id) async {
-    final url = Uri.parse('$baseUrl/user/$id');
-    final response = await http.get(url);
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return data['data'];
-    } else {
-      return null;
-    }
-  }
-
-  Future<bool> logout(Map<String, dynamic> data) async {
+  /// **Logout de usuario**
+  Future<Map<String, dynamic>> logout(String token) async {
     final url = Uri.parse('$baseUrl/$module/logout');
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode(data),
-    );
 
-    if (response.statusCode == 201) {
-      return true;
-    } else {
-      return false;
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 201) {
+        return {"success": true, "message": responseData["message"] ?? "Sesión cerrada correctamente"};
+      } else {
+        return {"success": false, "message": responseData["message"] ?? "Error al cerrar sesión"};
+      }
+    } catch (error) {
+      return {"success": false, "message": "Error de conexión: $error"};
     }
   }
 }

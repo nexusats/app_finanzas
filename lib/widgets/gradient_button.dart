@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:app_finanzas/config/pallete.dart';
 
 class GradientButton extends StatelessWidget {
-  const GradientButton({super.key});
+  final VoidCallback onPressed; // Agregamos la función de callback
+
+  const GradientButton({super.key, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: MediaQuery.of(context).size.width *
-          0.85, // 85% del ancho de la pantalla
+      width: MediaQuery.of(context).size.width * 0.85,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [
@@ -20,9 +21,9 @@ class GradientButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(7),
       ),
       child: ElevatedButton(
-        onPressed: () {},
+        onPressed: onPressed, // Llamamos la función pasada
         style: ElevatedButton.styleFrom(
-          fixedSize: const Size.fromHeight(55), // Altura fija
+          fixedSize: const Size.fromHeight(55),
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
         ),
