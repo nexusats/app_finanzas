@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:app_finanzas/app/model/transaction.dart';
 import 'package:app_finanzas/app/controller/transactions_provider.dart';
 import 'package:app_finanzas/screen/transaction/transaction_detail_screen.dart';
@@ -21,6 +22,10 @@ class TransactionScreen extends StatelessWidget {
           : null,
       body: Consumer<TransactionsProvider>(
         builder: (context, transactionProvider, child) {
+          if (transactionProvider.isLoading) {
+            return _buildLoadingSkeleton();
+          }
+
           final transactions = transactionProvider.transactions;
 
           if (transactions.isEmpty) {
@@ -32,8 +37,8 @@ class TransactionScreen extends StatelessWidget {
           return ListView.builder(
             padding: const EdgeInsets.all(20),
             itemCount: transactions.length,
-            itemBuilder: (context, index) => _buildTransactionItem(
-                context, transactions[index]), // Se pasa `context`
+            itemBuilder: (context, index) =>
+                _buildTransactionItem(context, transactions[index]),
           );
         },
       ),
@@ -41,10 +46,9 @@ class TransactionScreen extends StatelessWidget {
   }
 
   Widget _buildTransactionItem(BuildContext context, Transaction transaction) {
-    // Validación para asegurar que `transaction.id` sea un entero válido
     final transactionId = transaction.id;
     if (transactionId == null) {
-      return const SizedBox(); // Evita errores si `id` es nulo o de otro tipo
+      return const SizedBox();
     }
 
     return Card(
@@ -63,7 +67,6 @@ class TransactionScreen extends StatelessWidget {
         trailing: IconButton(
           icon: const Icon(Icons.arrow_forward_ios, size: 16),
           onPressed: () {
-            // Obtener transacción por ID y navegar a la pantalla de detalles
             Provider.of<TransactionsProvider>(context, listen: false)
                 .fetchTransactionById(transactionId)
                 .then((_) {
@@ -76,12 +79,49 @@ class TransactionScreen extends StatelessWidget {
               );
             }).catchError((error) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
+                const SnackBar(
                     content:
                         Text("Error al obtener detalles de la transacción")),
               );
             });
           },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingSkeleton() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(20),
+      itemCount: 5,
+      itemBuilder: (context, index) => Shimmer.fromColors(
+        baseColor: Colors.grey[300]!,
+        highlightColor: Colors.grey[100]!,
+        child: Card(
+          elevation: 3,
+          margin: const EdgeInsets.symmetric(vertical: 10),
+          child: ListTile(
+            leading: Container(
+              width: 40,
+              height: 40,
+              color: Colors.white,
+            ),
+            title: Container(
+              width: double.infinity,
+              height: 16,
+              color: Colors.white,
+            ),
+            subtitle: Container(
+              width: 100,
+              height: 14,
+              color: Colors.white,
+            ),
+            trailing: Container(
+              width: 20,
+              height: 20,
+              color: Colors.white,
+            ),
+          ),
         ),
       ),
     );
