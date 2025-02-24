@@ -1,70 +1,41 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:app_finanzas/app/model/transaction.dart';
+import 'package:app_finanzas/widgets/custom_snackbar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_finanzas/app/services/transaction_service.dart';
 
 class TransactionsProvider extends ChangeNotifier {
   final List<Transaction> _transactions = [];
-  SharedPreferences? prefs;
-  final TransactionService _transactionService =
-      TransactionService(); // Instancia del servicio
+  SharedPreferences? _prefs;
+  final TransactionService _transactionService = TransactionService();
 
   TransactionsProvider() {
-    _loadTransactions(); // Cargar las transacciones guardadas al iniciar
+    _loadTransactions();
   }
 
   List<Transaction> get transactions => _transactions;
 
-  double getTotalIncomes() {
-    return _transactions
-        .where((transaction) => transaction.type == TransactionType.I)
-        .map((transaction) => transaction.amount)
-        .fold(0, (previousValue, element) => previousValue + element);
-  }
+  double getTotalIncomes() => _transactions
+      .where((transaction) => transaction.type == TransactionType.I)
+      .fold(0, (sum, transaction) => sum + transaction.amount);
 
-  double getTotalExpenses() {
-    return _transactions
-        .where((transaction) => transaction.type == TransactionType.E)
-        .map((transaction) => transaction.amount)
-        .fold(0, (previousValue, element) => previousValue + element);
-  }
+  double getTotalExpenses() => _transactions
+      .where((transaction) => transaction.type == TransactionType.E)
+      .fold(0, (sum, transaction) => sum + transaction.amount);
 
-  double getBalance() {
-    return getTotalIncomes() - getTotalExpenses();
-  }
-
-  /* Future<void> _loadTransactions() async {
-    prefs = await SharedPreferences.getInstance();
-    List<String>? storedTransactions = prefs?.getStringList("_transactions");
-    
-    if (storedTransactions != null) {
-      _transactions.clear();
-      _transactions.addAll(
-        storedTransactions.map((jsonString) => Transaction.fromJson(jsonDecode(jsonString)))
-      );
-    }
-    notifyListeners();
-  } */
+  double getBalance() => getTotalIncomes() - getTotalExpenses();
 
   Future<void> _loadTransactions() async {
     try {
-      // Intentar obtener las transacciones desde la API
       final fetchedTransactions = await _transactionService.getTransactions();
-      print("fetchedTransactions $fetchedTransactions");
-      // Limpiar la lista y agregar las nuevas transacciones
       _transactions.clear();
       _transactions.addAll(
           fetchedTransactions.map((json) => Transaction.fromJson(json)));
-
-      // Guardar en SharedPreferences
       await _saveTransactions();
     } catch (error) {
-      print("Error al cargar transacciones desde API: $error");
-
-      // Si falla la API, intenta cargar desde SharedPreferences
-      prefs = await SharedPreferences.getInstance();
-      List<String>? storedTransactions = prefs?.getStringList("_transactions");
+      _prefs ??= await SharedPreferences.getInstance();
+      List<String>? storedTransactions = _prefs?.getStringList("_transactions");
 
       if (storedTransactions != null) {
         _transactions.clear();
@@ -72,43 +43,36 @@ class TransactionsProvider extends ChangeNotifier {
             .map((jsonString) => Transaction.fromJson(jsonDecode(jsonString))));
       }
     }
-
     notifyListeners();
   }
 
-  Future _saveTransactions() async {
-    if (prefs != null) {
-      List<String> jsonTransactions = _transactions
-          .map((transaction) => jsonEncode(transaction.toJson()))
-          .toList();
-      await prefs!.setStringList("_transactions", jsonTransactions);
-    }
+  Future<void> _saveTransactions() async {
+    _prefs ??= await SharedPreferences.getInstance();
+    await _prefs!.setStringList("_transactions",
+        _transactions.map((transaction) => jsonEncode(transaction.toJson())).toList());
   }
 
-  Future<void> addTransaction(Transaction transaction) async {
+  Future<void> addTransaction(BuildContext context, Transaction transaction) async {
     try {
-      // Realiza la solicitud al servicio para agregar la transacción
-      bool success =
-          await _transactionService.createTransaction(transaction.toJson());
+      bool success = await _transactionService.createTransaction(transaction.toJson());
 
       if (success) {
-        // Si la transacción se ha agregado con éxito a través del servicio, se añade a la lista local
         _transactions.add(transaction);
         await _saveTransactions();
         notifyListeners();
+        CustomSnackbar.show(context, "Transacción agregada exitosamente");
       } else {
-        // Manejo de error en caso de que la petición falle
-        throw Exception('Failed to add transaction');
+        CustomSnackbar.show(context, "Error al agregar la transacción", isError: true);
       }
     } catch (error) {
-      // Manejo de errores
-      throw Exception('Error: $error');
+      CustomSnackbar.show(context, "Error de conexión: $error", isError: true);
     }
   }
 
-  Future<void> removeTransaction(Transaction transaction) async {
+  Future<void> removeTransaction(BuildContext context, Transaction transaction) async {
     _transactions.remove(transaction);
     await _saveTransactions();
     notifyListeners();
+    CustomSnackbar.show(context, "Transacción eliminada");
   }
 }
