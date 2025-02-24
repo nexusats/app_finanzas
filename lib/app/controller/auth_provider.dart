@@ -15,7 +15,7 @@ class AuthProvider extends ChangeNotifier {
 
   User? get currentUser => _currentUser;
   String? get token => _token;
-  bool get isAuthenticated => _token != null && _token!.isNotEmpty;
+  bool get isAuthenticated => _token?.isNotEmpty ?? false;
 
   /// **Constructor: carga usuario y token al iniciar**
   AuthProvider() {
@@ -23,8 +23,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// **Muestra alertas tipo Snackbar**
-  void _showSnackbar(BuildContext context, String message,
-      {bool isError = false}) {
+  void _showSnackbar(BuildContext context, String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message, style: const TextStyle(color: Colors.white)),
@@ -40,14 +39,17 @@ class AuthProvider extends ChangeNotifier {
     final storedUser = _prefs?.getString("_user");
     final storedToken = _prefs?.getString("_token");
 
-    if (storedUser != null && storedToken != null) {
+    if (storedUser != null && storedToken != null && storedToken.isNotEmpty) {
       _currentUser = User.fromJson(jsonDecode(storedUser));
       _token = storedToken;
-      notifyListeners();
+    } else {
+      _clearSession();
     }
+
+    notifyListeners();
   }
 
-  /// **Guarda o elimina usuario y token en SharedPreferences**
+  /// **Guarda usuario y token en SharedPreferences**
   Future<void> _saveUser() async {
     _prefs ??= await SharedPreferences.getInstance();
 
@@ -55,43 +57,46 @@ class AuthProvider extends ChangeNotifier {
       await _prefs!.setString("_user", jsonEncode(_currentUser!.toJson()));
       await _prefs!.setString("_token", _token!);
     } else {
-      await _prefs!.remove("_user");
-      await _prefs!.remove("_token");
+      _clearSession();
     }
   }
 
+  /// **Elimina datos de sesión**
+  Future<void> _clearSession() async {
+    _currentUser = null;
+    _token = null;
+    await _prefs?.remove("_user");
+    await _prefs?.remove("_token");
+    notifyListeners();
+  }
+
   /// **Login del usuario**
-  Future<void> login(
-      BuildContext context, Map<String, dynamic> userData) async {
+  Future<void> login(BuildContext context, Map<String, dynamic> userData) async {
     try {
       final result = await _authService.login(userData);
-      print("Respuesta del login: $result");
 
       if (result["success"] == true) {
-        _currentUser =
-            result["user"] != null ? User.fromJson(result["user"]) : null;
-        _token = result["token"] ?? ""; // Usa un valor por defecto si es null
+        _currentUser = result["user"] != null ? User.fromJson(result["user"]) : null;
+        _token = result["token"] ?? "";
 
         if (_token!.isEmpty) {
-          print("⚠️ Advertencia: el token está vacío");
+          _showSnackbar(context, "⚠️ Advertencia: el token está vacío", isError: true);
+          return;
         }
 
         await _saveUser();
         notifyListeners();
 
-        print("Usuario autenticado: $_currentUser");
-        print("Token guardado: $_token");
-
         _showSnackbar(context, "Inicio de sesión exitoso");
 
         Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (_) => const HomeScreen()));
+          context,
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
       } else {
-        _showSnackbar(context, result["message"] ?? "Error desconocido",
-            isError: true);
+        _showSnackbar(context, result["message"] ?? "Error desconocido", isError: true);
       }
     } catch (error) {
-      print("Error en login: $error");
       _showSnackbar(context, "Error de conexión: $error", isError: true);
     }
   }
@@ -104,22 +109,30 @@ class AuthProvider extends ChangeNotifier {
       final result = await _authService.logout(_token!);
 
       if (result["success"] == true) {
-        _currentUser = null;
-        _token = null;
-        await _saveUser();
-        notifyListeners();
-
+        _clearSession();
         _showSnackbar(context, "Sesión cerrada correctamente");
 
-        // Redirigir a la pantalla de inicio de sesión
-        Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+        _redirectToLogin(context);
       } else {
-        _showSnackbar(context, result["message"], isError: true);
+        if (result["statusCode"] == 401) {
+          _showSnackbar(context, "⚠️ Sesión expirada, vuelve a iniciar sesión", isError: true);
+          _clearSession();
+          _redirectToLogin(context);
+        } else {
+          _showSnackbar(context, result["message"] ?? "Error al cerrar sesión", isError: true);
+        }
       }
     } catch (error) {
-      print("Error en logout: $error");
       _showSnackbar(context, "Error de conexión: $error", isError: true);
     }
+  }
+
+  /// **Redirige a la pantalla de login eliminando el historial**
+  void _redirectToLogin(BuildContext context) {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
   }
 }

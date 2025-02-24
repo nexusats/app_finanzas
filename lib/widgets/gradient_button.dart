@@ -3,8 +3,9 @@ import 'package:app_finanzas/config/pallete.dart';
 
 class GradientButton extends StatelessWidget {
   final VoidCallback onPressed; // Agregamos la función de callback
+  final String label;
 
-  const GradientButton({super.key, required this.onPressed});
+  const GradientButton({super.key, required this.onPressed, required this.label});
 
   @override
   Widget build(BuildContext context) {
@@ -27,9 +28,9 @@ class GradientButton extends StatelessWidget {
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
         ),
-        child: const Text(
-          'Sign in',
-          style: TextStyle(
+        child: Text(
+          label,
+          style: const TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 17,
           ),

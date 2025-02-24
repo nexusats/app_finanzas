@@ -1,3 +1,4 @@
+import 'package:app_finanzas/config/pallete.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -32,9 +33,12 @@ class MyApp extends StatelessWidget {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             title: 'Gestiona tus finanzas',
-            theme: ThemeData(
+            /* theme: ThemeData(
               colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.blue),
               useMaterial3: true,
+            ), */
+            theme: ThemeData.dark().copyWith(
+              scaffoldBackgroundColor: Pallete.backgroundColor,
             ),
             home: authProvider.isAuthenticated ? const HomeScreen() : const LoginScreen(),
           );

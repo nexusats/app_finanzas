@@ -60,7 +60,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _passwordController,
                 ),
                 const SizedBox(height: 20),
-                GradientButton(onPressed: _submitForm),
+                GradientButton(onPressed: _submitForm, label: 'Sign in'),
               ],
             ),
           ),

@@ -28,6 +28,13 @@ dev_dependencies:
 
   flutter_lints: ^5.0.0
 
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon.png" # Ruta del ícono (debe ser de 1024x1024 px)
+  adaptive_icon_background: "#f8f9fa" # Color de fondo (Android)
+  adaptive_icon_foreground: "assets/icon.png"
+
 flutter:
 
   uses-material-design: true

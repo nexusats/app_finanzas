@@ -50,9 +50,9 @@ class AuthService {
       final responseData = jsonDecode(response.body);
 
       if (response.statusCode == 201) {
-        return {"success": true, "message": responseData["message"] ?? "Sesión cerrada correctamente"};
+        return {"success": true, "message": responseData["message"] ?? "Sesión cerrada correctamente", "statusCode": response.statusCode};
       } else {
-        return {"success": false, "message": responseData["message"] ?? "Error al cerrar sesión"};
+        return {"success": false, "message": responseData["message"] ?? "Error al cerrar sesión", "statusCode": response.statusCode};
       }
     } catch (error) {
       return {"success": false, "message": "Error de conexión: $error"};
