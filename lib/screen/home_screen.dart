@@ -15,75 +15,84 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    setState(() => _selectedIndex = index);
   }
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        if (!authProvider.isAuthenticated) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const LoginScreen()),
+            );
+          });
+        }
 
-    if (!authProvider.isAuthenticated) {
-      Future.microtask(() {
-        Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (_) => const LoginScreen()));
-      });
-    }
+        final List<Widget> screens = [
+          _buildHomeScreen(),
+          _buildSettingsScreen(authProvider),
+        ];
 
-    final List<Widget> screens = [
-      _buildHomeScreen(),
-      _buildSettingsScreen(authProvider),
-    ];
+        return Theme(
+          data: ThemeData.light().copyWith(
+            scaffoldBackgroundColor: Colors.white,
+          ),
+          child: Scaffold(
+            appBar: _buildAppBar(),
+            body: SafeArea(child: screens[_selectedIndex]),
+            bottomNavigationBar: _buildBottomNavigationBar(),
+          ),
+        );
+      },
+    );
+  }
 
-    return Theme(
-      data: ThemeData.light().copyWith(
-        scaffoldBackgroundColor: Colors.white, // Mismo fondo para todas las vistas
-      ),
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text("Finanzas"),
-          backgroundColor: Colors.blue,
-          foregroundColor: Colors.white, // Color del texto en el AppBar
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      title: const Text("Finanzas"),
+      backgroundColor: Colors.blue,
+      foregroundColor: Colors.white,
+    );
+  }
+
+  Widget _buildBottomNavigationBar() {
+    return BottomNavigationBar(
+      currentIndex: _selectedIndex,
+      onTap: _onItemTapped,
+      selectedItemColor: Colors.blue,
+      unselectedItemColor: Colors.grey,
+      items: const [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home),
+          label: "Inicio",
         ),
-        body: SafeArea(child: screens[_selectedIndex]),
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-          selectedItemColor: Colors.blue,
-          unselectedItemColor: Colors.grey,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home),
-              label: "Inicio",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.settings),
-              label: "Configuración",
-            ),
-          ],
+        BottomNavigationBarItem(
+          icon: Icon(Icons.settings),
+          label: "Configuración",
         ),
-      ),
+      ],
     );
   }
 
   Widget _buildHomeScreen() {
-    return Center(
+    return const Center(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(20),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const Text(
+            Text(
               "Bienvenido a la aplicación de finanzas",
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: ConfigGlobal.sizeTitle,
-                color: Colors.black, // Texto en color oscuro para el fondo claro
+                color: Colors.black,
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
           ],
         ),
       ),
@@ -101,7 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
             style: TextStyle(
               fontSize: ConfigGlobal.sizeTitle,
               fontWeight: FontWeight.bold,
-              color: Colors.black, // Texto en color oscuro
+              color: Colors.black,
             ),
           ),
           const SizedBox(height: 20),
@@ -114,9 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ListTile(
             leading: const Icon(Icons.exit_to_app, color: Colors.red),
             title: const Text("Cerrar Sesión"),
-            onTap: () {
-              authProvider.logout(context);
-            },
+            onTap: () => authProvider.logout(context),
           ),
         ],
       ),
