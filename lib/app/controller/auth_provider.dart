@@ -5,6 +5,7 @@ import 'package:app_finanzas/app/model/user.dart';
 import 'package:app_finanzas/screen/auth/login_screen.dart';
 import 'package:app_finanzas/screen/home_screen.dart';
 import 'package:app_finanzas/app/services/auth_service.dart';
+import 'package:app_finanzas/widgets/custom_snackbar.dart';
 
 class AuthProvider extends ChangeNotifier {
   SharedPreferences? _prefs;
@@ -20,17 +21,6 @@ class AuthProvider extends ChangeNotifier {
   /// **Constructor: carga usuario y token al iniciar**
   AuthProvider() {
     _loadUser();
-  }
-
-  /// **Muestra alertas tipo Snackbar**
-  void _showSnackbar(BuildContext context, String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message, style: const TextStyle(color: Colors.white)),
-        backgroundColor: isError ? Colors.red : Colors.green,
-        duration: const Duration(seconds: 3),
-      ),
-    );
   }
 
   /// **Carga usuario y token desde SharedPreferences**
@@ -80,24 +70,24 @@ class AuthProvider extends ChangeNotifier {
         _token = result["token"] ?? "";
 
         if (_token!.isEmpty) {
-          _showSnackbar(context, "⚠️ Advertencia: el token está vacío", isError: true);
+          CustomSnackbar.show(context, "⚠️ Advertencia: el token está vacío", isError: true);
           return;
         }
 
         await _saveUser();
         notifyListeners();
 
-        _showSnackbar(context, "Inicio de sesión exitoso");
+        CustomSnackbar.show(context, "Inicio de sesión exitoso");
 
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
       } else {
-        _showSnackbar(context, result["message"] ?? "Error desconocido", isError: true);
+        CustomSnackbar.show(context, result["message"] ?? "Error desconocido", isError: true);
       }
     } catch (error) {
-      _showSnackbar(context, "Error de conexión: $error", isError: true);
+      CustomSnackbar.show(context, "Error de conexión: $error", isError: true);
     }
   }
 
@@ -110,20 +100,20 @@ class AuthProvider extends ChangeNotifier {
 
       if (result["success"] == true) {
         _clearSession();
-        _showSnackbar(context, "Sesión cerrada correctamente");
+        CustomSnackbar.show(context, "Sesión cerrada correctamente");
 
         _redirectToLogin(context);
       } else {
         if (result["statusCode"] == 401) {
-          _showSnackbar(context, "⚠️ Sesión expirada, vuelve a iniciar sesión", isError: true);
+          CustomSnackbar.show(context, "⚠️ Sesión expirada, vuelve a iniciar sesión", isError: true);
           _clearSession();
           _redirectToLogin(context);
         } else {
-          _showSnackbar(context, result["message"] ?? "Error al cerrar sesión", isError: true);
+          CustomSnackbar.show(context, result["message"] ?? "Error al cerrar sesión", isError: true);
         }
       }
     } catch (error) {
-      _showSnackbar(context, "Error de conexión: $error", isError: true);
+      CustomSnackbar.show(context, "Error de conexión: $error", isError: true);
     }
   }
 
