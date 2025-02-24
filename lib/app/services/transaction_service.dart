@@ -18,6 +18,8 @@ class TransactionService {
       body: jsonEncode(transactionData),
     );
 
+    print(response.statusCode);
+
     if (response.statusCode == 201) {
       return true;
     } else {

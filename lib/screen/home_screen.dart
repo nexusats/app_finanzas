@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:app_finanzas/config/global.dart';
 import 'package:app_finanzas/screen/auth/login_screen.dart';
 import 'package:app_finanzas/app/controller/auth_provider.dart';
+import 'package:app_finanzas/screen/transaction/transaction_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -33,7 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         final List<Widget> screens = [
           _buildHomeScreen(),
-          _buildTransactionScreen(),
+          const TransactionScreen(showAppBar: false),
           _buildExpenseCategoryScreen(),
           _buildSettingsScreen(authProvider),
         ];
@@ -92,7 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildTransactionScreen() {
+  /* Widget _buildTransactionScreen() {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: List.generate(5, (index) => _buildTransactionItem(index)),
@@ -110,7 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       ),
     );
-  }
+  } */
 
   Widget _buildExpenseCategoryScreen() {
     return ListView(
