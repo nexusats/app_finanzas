@@ -107,7 +107,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 20),
           ListTile(
             leading: const Icon(Icons.person),
-            title: Text(authProvider.currentUser?.firstname ?? "Usuario"),
+            title: Text(authProvider.currentUser?.fullName ?? "Usuario"),
             subtitle: Text(authProvider.currentUser?.email ?? "Correo no disponible"),
           ),
           const Divider(),

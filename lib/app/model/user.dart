@@ -27,6 +27,10 @@ class User {
     this.emailVerifiedAt,
   });
 
+  String get fullName {
+    return "${firstname ?? ''} ${lastname ?? ''}".trim();
+  }
+
   /// **Factory constructor para convertir un JSON a un objeto User**
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
