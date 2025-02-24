@@ -11,7 +11,11 @@ import 'package:app_finanzas/app/controller/transactions_provider.dart';
 import 'package:app_finanzas/app/controller/category_expense_provider.dart';
 
 Future<void> main() async {
-  await dotenv.load(); // Carga las variables de entorno
+  const String envFile = bool.fromEnvironment('dart.vm.product')
+      ? ".env.production"
+      : ".env.development";
+
+  await dotenv.load(fileName: envFile); // Carga las variables de entorno
   WidgetsFlutterBinding.ensureInitialized(); // Asegura que el framework esté inicializado
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky); // Full screen
   runApp(const MyApp());
