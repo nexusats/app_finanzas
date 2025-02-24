@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_finanzas/app/model/user.dart';
-import 'package:app_finanzas/screen/auth/login_screen.dart';
 import 'package:app_finanzas/screen/home_screen.dart';
-import 'package:app_finanzas/app/services/auth_service.dart';
 import 'package:app_finanzas/widgets/custom_snackbar.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:app_finanzas/screen/auth/login_screen.dart';
+import 'package:app_finanzas/app/services/auth_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   SharedPreferences? _prefs;
