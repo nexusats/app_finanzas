@@ -33,6 +33,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
         final List<Widget> screens = [
           _buildHomeScreen(),
+          _buildTransactionScreen(),
+          _buildExpenseCategoryScreen(),
           _buildSettingsScreen(authProvider),
         ];
 
@@ -70,6 +72,14 @@ class _HomeScreenState extends State<HomeScreen> {
           label: "Inicio",
         ),
         BottomNavigationBarItem(
+          icon: Icon(Icons.money_outlined),
+          label: "Transacciones",
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.tag),
+          label: "Gastos Categoria",
+        ),
+        BottomNavigationBarItem(
           icon: Icon(Icons.settings),
           label: "Configuración",
         ),
@@ -86,6 +96,50 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Text(
               "Bienvenido a la aplicación de finanzas",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: ConfigGlobal.sizeTitle,
+                color: Colors.black,
+              ),
+            ),
+            SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTransactionScreen() {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(20),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              "Bienvenido a la aplicación de finanzas (transacciones)",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: ConfigGlobal.sizeTitle,
+                color: Colors.black,
+              ),
+            ),
+            SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpenseCategoryScreen() {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(20),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              "Bienvenido a la aplicación de finanzas (gastos categoría)",
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: ConfigGlobal.sizeTitle,
@@ -117,7 +171,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ListTile(
             leading: const Icon(Icons.person),
             title: Text(authProvider.currentUser?.fullName ?? "Usuario"),
-            subtitle: Text(authProvider.currentUser?.email ?? "Correo no disponible"),
+            subtitle:
+                Text(authProvider.currentUser?.email ?? "Correo no disponible"),
           ),
           const Divider(),
           ListTile(
