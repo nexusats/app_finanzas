@@ -55,14 +55,15 @@ class TransactionService {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      return data['data'];
+      return data;
     } else {
       return null;
     }
   }
 
   // Actualizar transacción
-  Future<bool> updateTransaction(int id, Map<String, dynamic> transactionData) async {
+  Future<bool> updateTransaction(
+      int id, Map<String, dynamic> transactionData) async {
     final url = Uri.parse('$baseUrl/$module/$id');
     final headers = await _getHeaders();
     final response = await http.put(

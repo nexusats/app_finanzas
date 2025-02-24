@@ -9,53 +9,76 @@ class TransactionsProvider extends ChangeNotifier {
   final List<Transaction> _transactions = [];
   SharedPreferences? _prefs;
   final TransactionService _transactionService = TransactionService();
+  Transaction? _selectedTransaction;
+
+  Transaction? get selectedTransaction => _selectedTransaction;
+  List<Transaction> get transactions => List.unmodifiable(_transactions); // Protección de datos
 
   TransactionsProvider() {
     _loadTransactions();
   }
 
-  List<Transaction> get transactions => _transactions;
-
+  /// 🏦 Cálculo de ingresos
   double getTotalIncomes() => _transactions
-      .where((transaction) => transaction.type == TransactionType.I)
-      .fold(0, (sum, transaction) => sum + transaction.amount);
+      .where((t) => t.type == TransactionType.I)
+      .fold(0.0, (sum, t) => sum + t.amount);
 
+  /// 📉 Cálculo de egresos
   double getTotalExpenses() => _transactions
-      .where((transaction) => transaction.type == TransactionType.E)
-      .fold(0, (sum, transaction) => sum + transaction.amount);
+      .where((t) => t.type == TransactionType.E)
+      .fold(0.0, (sum, t) => sum + t.amount);
 
+  /// 💰 Balance final
   double getBalance() => getTotalIncomes() - getTotalExpenses();
 
+  /// 📦 Carga inicial de transacciones
   Future<void> _loadTransactions() async {
+    _prefs ??= await SharedPreferences.getInstance();
+    
     try {
       final fetchedTransactions = await _transactionService.getTransactions();
-      _transactions.clear();
-      _transactions.addAll(
-          fetchedTransactions.map((json) => Transaction.fromJson(json)));
-      await _saveTransactions();
-    } catch (error) {
-      _prefs ??= await SharedPreferences.getInstance();
-      List<String>? storedTransactions = _prefs?.getStringList("_transactions");
+      _transactions
+        ..clear()
+        ..addAll(fetchedTransactions.map((e) => Transaction.fromJson(e as Map<String, dynamic>)));
 
+      await _saveTransactions(); // Guarda en cache tras la carga exitosa
+    } catch (_) {
+      final storedTransactions = _prefs?.getStringList("_transactions");
       if (storedTransactions != null) {
-        _transactions.clear();
-        _transactions.addAll(storedTransactions
-            .map((jsonString) => Transaction.fromJson(jsonDecode(jsonString))));
+        _transactions
+          ..clear()
+          ..addAll(storedTransactions.map((json) => Transaction.fromJson(jsonDecode(json))));
       }
     }
     notifyListeners();
   }
 
-  Future<void> _saveTransactions() async {
-    _prefs ??= await SharedPreferences.getInstance();
-    await _prefs!.setStringList("_transactions",
-        _transactions.map((transaction) => jsonEncode(transaction.toJson())).toList());
+  /// 🔍 Obtiene una transacción por ID
+  Future<void> fetchTransactionById(int id) async {
+    if (_selectedTransaction?.id == id) return; // Evita llamadas innecesarias
+
+    try {
+      final data = await _transactionService.getTransactionById(id);
+      _selectedTransaction = data != null ? Transaction.fromJson(data) : null;
+    } catch (_) {
+      _selectedTransaction = null;
+    } 
+    notifyListeners();
   }
 
+  /// 💾 Guarda transacciones en caché local
+  Future<void> _saveTransactions() async {
+    _prefs ??= await SharedPreferences.getInstance();
+    await _prefs!.setStringList(
+      "_transactions",
+      _transactions.map((t) => jsonEncode(t.toJson())).toList(),
+    );
+  }
+
+  /// ➕ Agrega una transacción
   Future<void> addTransaction(BuildContext context, Transaction transaction) async {
     try {
-      bool success = await _transactionService.createTransaction(transaction.toJson());
-
+      final success = await _transactionService.createTransaction(transaction.toJson());
       if (success) {
         _transactions.add(transaction);
         await _saveTransactions();
@@ -69,6 +92,7 @@ class TransactionsProvider extends ChangeNotifier {
     }
   }
 
+  /// ❌ Elimina una transacción
   Future<void> removeTransaction(BuildContext context, Transaction transaction) async {
     _transactions.remove(transaction);
     await _saveTransactions();
