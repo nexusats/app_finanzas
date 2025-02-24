@@ -40,7 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         return Theme(
           data: ThemeData.light().copyWith(
-            scaffoldBackgroundColor: Colors.white,
+            scaffoldBackgroundColor: ConfigGlobal.backgroundSecondColor,
           ),
           child: Scaffold(
             appBar: _buildAppBar(),
@@ -67,22 +67,13 @@ class _HomeScreenState extends State<HomeScreen> {
       selectedItemColor: Colors.blue,
       unselectedItemColor: Colors.grey,
       items: const [
+        BottomNavigationBarItem(icon: Icon(Icons.home), label: "Inicio"),
         BottomNavigationBarItem(
-          icon: Icon(Icons.home),
-          label: "Inicio",
-        ),
+            icon: Icon(Icons.money_outlined), label: "Transacciones"),
         BottomNavigationBarItem(
-          icon: Icon(Icons.money_outlined),
-          label: "Transacciones",
-        ),
+            icon: Icon(Icons.tag), label: "Gastos Categoría"),
         BottomNavigationBarItem(
-          icon: Icon(Icons.tag),
-          label: "Gastos Categoria",
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.settings),
-          label: "Configuración",
-        ),
+            icon: Icon(Icons.settings), label: "Configuración"),
       ],
     );
   }
@@ -91,64 +82,52 @@ class _HomeScreenState extends State<HomeScreen> {
     return const Center(
       child: Padding(
         padding: EdgeInsets.all(20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              "Bienvenido a la aplicación de finanzas",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: ConfigGlobal.sizeTitle,
-                color: Colors.black,
-              ),
-            ),
-            SizedBox(height: 20),
-          ],
+        child: Text(
+          "Bienvenido a la aplicación de finanzas",
+          textAlign: TextAlign.center,
+          style:
+              TextStyle(fontSize: ConfigGlobal.sizeTitle, color: Colors.black),
         ),
       ),
     );
   }
 
   Widget _buildTransactionScreen() {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.all(20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              "Bienvenido a la aplicación de finanzas (transacciones)",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: ConfigGlobal.sizeTitle,
-                color: Colors.black,
-              ),
-            ),
-            SizedBox(height: 20),
-          ],
-        ),
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: List.generate(5, (index) => _buildTransactionItem(index)),
+    );
+  }
+
+  Widget _buildTransactionItem(int index) {
+    return Card(
+      elevation: 3,
+      margin: const EdgeInsets.symmetric(vertical: 10),
+      child: ListTile(
+        leading: const Icon(Icons.attach_money, color: Colors.green),
+        title: Text("Transacción #$index"),
+        subtitle: Text("Monto: \$${(index + 1) * 100}"),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       ),
     );
   }
 
   Widget _buildExpenseCategoryScreen() {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.all(20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              "Bienvenido a la aplicación de finanzas (gastos categoría)",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: ConfigGlobal.sizeTitle,
-                color: Colors.black,
-              ),
-            ),
-            SizedBox(height: 20),
-          ],
-        ),
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: List.generate(5, (index) => _buildExpenseCategoryItem(index)),
+    );
+  }
+
+  Widget _buildExpenseCategoryItem(int index) {
+    return Card(
+      elevation: 3,
+      margin: const EdgeInsets.symmetric(vertical: 10),
+      child: ListTile(
+        leading: const Icon(Icons.category, color: Colors.blue),
+        title: Text("Categoría de Gasto #$index"),
+        subtitle: Text("Presupuesto asignado: \$${(index + 1) * 200}"),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       ),
     );
   }
@@ -168,17 +147,23 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          ListTile(
-            leading: const Icon(Icons.person),
-            title: Text(authProvider.currentUser?.fullName ?? "Usuario"),
-            subtitle:
-                Text(authProvider.currentUser?.email ?? "Correo no disponible"),
+          Card(
+            elevation: 3,
+            child: ListTile(
+              leading: const Icon(Icons.person),
+              title: Text(authProvider.currentUser?.fullName ?? "Usuario"),
+              subtitle: Text(
+                  authProvider.currentUser?.email ?? "Correo no disponible"),
+            ),
           ),
           const Divider(),
-          ListTile(
-            leading: const Icon(Icons.exit_to_app, color: Colors.red),
-            title: const Text("Cerrar Sesión"),
-            onTap: () => authProvider.logout(context),
+          Card(
+            elevation: 3,
+            child: ListTile(
+              leading: const Icon(Icons.exit_to_app, color: Colors.red),
+              title: const Text("Cerrar Sesión"),
+              onTap: () => authProvider.logout(context),
+            ),
           ),
         ],
       ),
