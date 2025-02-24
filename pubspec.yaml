@@ -21,6 +21,7 @@ dependencies:
   shared_preferences: ^2.5.2
   provider: ^6.1.2
   currency_text_input_formatter: ^2.2.8
+  flutter_launcher_icons: ^0.14.3
   
 dev_dependencies:
   flutter_test:
@@ -31,9 +32,9 @@ dev_dependencies:
 flutter_icons:
   android: true
   ios: true
-  image_path: "assets/icon.png" # Ruta del ícono (debe ser de 1024x1024 px)
+  image_path: "assets/playstore.png" # Ruta del ícono (debe ser de 1024x1024 px)
   adaptive_icon_background: "#f8f9fa" # Color de fondo (Android)
-  adaptive_icon_foreground: "assets/icon.png"
+  adaptive_icon_foreground: "assets/playstore.png"
 
 flutter:
 

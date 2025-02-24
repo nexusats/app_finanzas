@@ -31,7 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }
 
-    final List<Widget> _screens = [
+    final List<Widget> screens = [
       _buildHomeScreen(),
       _buildSettingsScreen(authProvider),
     ];
@@ -46,7 +46,7 @@ class _HomeScreenState extends State<HomeScreen> {
           backgroundColor: Colors.blue,
           foregroundColor: Colors.white, // Color del texto en el AppBar
         ),
-        body: SafeArea(child: _screens[_selectedIndex]),
+        body: SafeArea(child: screens[_selectedIndex]),
         bottomNavigationBar: BottomNavigationBar(
           currentIndex: _selectedIndex,
           onTap: _onItemTapped,
