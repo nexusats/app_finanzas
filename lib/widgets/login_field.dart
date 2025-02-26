@@ -4,7 +4,7 @@ import 'package:app_finanzas/config/pallete.dart';
 class LoginField extends StatefulWidget {
   final String hintText;
   final bool isPassword;
-  final TextEditingController? controller; // Agregamos el controlador
+  final TextEditingController? controller;
 
   const LoginField({
     super.key,
@@ -23,9 +23,11 @@ class _LoginFieldState extends State<LoginField> {
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 300),
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width * 0.85,
+      ),
       child: TextFormField(
-        controller: widget.controller, // Vincular el controlador
+        controller: widget.controller,
         obscureText: widget.isPassword ? _obscureText : false,
         decoration: InputDecoration(
           contentPadding: const EdgeInsets.all(27),

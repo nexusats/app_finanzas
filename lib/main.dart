@@ -37,10 +37,6 @@ class MyApp extends StatelessWidget {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             title: 'Gestiona tus finanzas',
-            /* theme: ThemeData(
-              colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.blue),
-              useMaterial3: true,
-            ), */
             theme: ThemeData.dark().copyWith(
               scaffoldBackgroundColor: Pallete.backgroundColor,
             ),
