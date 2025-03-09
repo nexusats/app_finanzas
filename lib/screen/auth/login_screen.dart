@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:app_finanzas/widgets/login_field.dart';
 import 'package:app_finanzas/widgets/gradient_button.dart';
+import 'package:app_finanzas/screen/auth/register_screen.dart';
 import 'package:app_finanzas/app/controller/auth_provider.dart';
+import 'package:app_finanzas/screen/auth/recover_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,15 +15,16 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>(); // Llave para el formulario
-  final TextEditingController _emailController = TextEditingController(text: "atsgula@gmail.com");
-  final TextEditingController _passwordController = TextEditingController(text: "567202406Atsu");
+  final TextEditingController _emailController = TextEditingController(text: 'pruebaapp@app.com');
+  final TextEditingController _passwordController = TextEditingController(text: '12345678');
+  // final TextEditingController _emailController = TextEditingController(text: 'atsgula@gmail.com');
+  // final TextEditingController _passwordController = TextEditingController(text: '567202406Atsu');
 
   void _submitForm() {
     if (_formKey.currentState!.validate()) {
       String email = _emailController.text.trim();
       String password = _passwordController.text.trim();
 
-      // Enviamos los datos como un Map en lugar de un objeto User
       Map<String, dynamic> userData = {
         "email": email,
         "password": password,
@@ -61,6 +64,30 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 20),
                 GradientButton(onPressed: _submitForm, label: 'Sign in'),
+                const SizedBox(height: 20),
+                TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const RecoverPasswordScreen(),
+                      ),
+                    );
+                  },
+                  child: const Text('Forgot password?'),
+                ),
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const RegisterScreen(),
+                      ),
+                    );
+                  },
+                  child: const Text("Don't have an account? Sign up"),
+                ),
               ],
             ),
           ),

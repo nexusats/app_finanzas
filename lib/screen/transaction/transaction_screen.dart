@@ -42,6 +42,13 @@ class TransactionScreen extends StatelessWidget {
           );
         },
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Provider.of<TransactionsProvider>(context, listen: false).fetchTransactions();
+        },
+        backgroundColor: Colors.blue,
+        child: const Icon(Icons.refresh, color: Colors.white),
+      ),
     );
   }
 

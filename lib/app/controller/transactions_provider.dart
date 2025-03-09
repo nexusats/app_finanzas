@@ -30,17 +30,22 @@ class TransactionsProvider extends ChangeNotifier {
 
   double getBalance() => getTotalIncomes() - getTotalExpenses();
 
+  Future<void> fetchTransactions() async {
+    await _loadTransactions();
+  }
+
   Future<void> _loadTransactions() async {
-    _isLoading = true; 
+    _isLoading = true;
     notifyListeners();
 
     _prefs ??= await SharedPreferences.getInstance();
-    
+
     try {
       final fetchedTransactions = await _transactionService.getTransactions();
       _transactions
         ..clear()
-        ..addAll(fetchedTransactions.map((e) => Transaction.fromJson(e as Map<String, dynamic>)));
+        ..addAll(fetchedTransactions
+            .map((e) => Transaction.fromJson(e as Map<String, dynamic>)));
 
       await _saveTransactions();
     } catch (_) {
@@ -48,11 +53,12 @@ class TransactionsProvider extends ChangeNotifier {
       if (storedTransactions != null) {
         _transactions
           ..clear()
-          ..addAll(storedTransactions.map((json) => Transaction.fromJson(jsonDecode(json))));
+          ..addAll(storedTransactions
+              .map((json) => Transaction.fromJson(jsonDecode(json))));
       }
     }
 
-    _isLoading = false; 
+    _isLoading = false;
     notifyListeners();
   }
 
@@ -76,23 +82,27 @@ class TransactionsProvider extends ChangeNotifier {
     );
   }
 
-  Future<void> addTransaction(BuildContext context, Transaction transaction) async {
+  Future<void> addTransaction(
+      BuildContext context, Transaction transaction) async {
     try {
-      final success = await _transactionService.createTransaction(transaction.toJson());
+      final success =
+          await _transactionService.createTransaction(transaction.toJson());
       if (success) {
         _transactions.add(transaction);
         await _saveTransactions();
         notifyListeners();
         CustomSnackbar.show(context, "Transacción agregada exitosamente");
       } else {
-        CustomSnackbar.show(context, "Error al agregar la transacción", isError: true);
+        CustomSnackbar.show(context, "Error al agregar la transacción",
+            isError: true);
       }
     } catch (error) {
       CustomSnackbar.show(context, "Error de conexión: $error", isError: true);
     }
   }
 
-  Future<void> removeTransaction(BuildContext context, Transaction transaction) async {
+  Future<void> removeTransaction(
+      BuildContext context, Transaction transaction) async {
     _transactions.remove(transaction);
     await _saveTransactions();
     notifyListeners();
