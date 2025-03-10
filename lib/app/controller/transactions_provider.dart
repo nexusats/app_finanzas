@@ -91,13 +91,22 @@ class TransactionsProvider extends ChangeNotifier {
         _transactions.add(transaction);
         await _saveTransactions();
         notifyListeners();
-        CustomSnackbar.show(context, "Transacción agregada exitosamente");
+
+        // Verifica si el widget está montado antes de mostrar el Snackbar
+        if (context.mounted) {
+          CustomSnackbar.show(context, "Transacción agregada exitosamente");
+        }
       } else {
-        CustomSnackbar.show(context, "Error al agregar la transacción",
-            isError: true);
+        if (context.mounted) {
+          CustomSnackbar.show(context, "Error al agregar la transacción",
+              isError: true);
+        }
       }
     } catch (error) {
-      CustomSnackbar.show(context, "Error de conexión: $error", isError: true);
+      if (context.mounted) {
+        CustomSnackbar.show(context, "Error de conexión: $error",
+            isError: true);
+      }
     }
   }
 

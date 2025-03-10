@@ -1,3 +1,4 @@
+// ignore: depend_on_referenced_packages
 import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:flutter/material.dart';
@@ -406,8 +407,10 @@ class TransactionFormModalState extends State<TransactionFormModal> {
       // status: _selectedStatus,
     );
 
-    Provider.of<TransactionsProvider>(context, listen: false)
-        .addTransaction(context, transaction);
+    context.read<TransactionsProvider>().addTransaction(context, transaction);
+
+    /* Provider.of<TransactionsProvider>(context, listen: false)
+        .addTransaction(context, transaction); */
 
     Navigator.pop(context);
   }
