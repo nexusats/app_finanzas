@@ -1,6 +1,8 @@
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'package:app_finanzas/config/global.dart';
 import 'package:app_finanzas/app/model/transaction.dart';
 import 'package:app_finanzas/app/controller/transactions_provider.dart';
 import 'package:app_finanzas/screen/transaction/transaction_detail_screen.dart';
@@ -149,8 +151,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
         TextEditingController();
 
     DateTime? _selectedDate;
-    TransactionType? _selectedType =
-        TransactionType.I; // Establecer valor predeterminado
+    TransactionType? _selectedType = TransactionType.I;
     String _selectedStatus = "Pendiente";
 
     showModalBottomSheet(
@@ -170,103 +171,58 @@ class _TransactionScreenState extends State<TransactionScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
-                      "Nueva Transacción",
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    // Título del Modal
+                    Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Text(
+                        'Agregar transacción',
+                        style: TextStyle(
+                          fontSize: ConfigGlobal.sizeTitle,
+                          fontWeight: FontWeight.bold,
+                          color: ConfigGlobal.backgroundColor,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 10),
-                    // Dropdown para seleccionar el tipo de transacción
-                    DropdownButtonFormField<TransactionType>(
-                      value: _selectedType,
-                      onChanged: (value) {
+
+                    // Selección del tipo de transacción
+                    _buildDropdownField(
+                      "Tipo de Transacción",
+                      [
+                        {"id": "I", "label": "Ingreso"},
+                        {"id": "E", "label": "Gasto"},
+                        {"id": "A", "label": "Ahorro"}
+                      ],
+                      (value) {
                         setState(() {
-                          _selectedType = value;
+                          _selectedType = TransactionType.values.firstWhere(
+                            (type) => type.toString().split('.').last == value,
+                            orElse: () => TransactionType.I,
+                          );
                         });
                       },
-                      decoration: const InputDecoration(
-                        labelText: "Tipo de Transacción",
-                        border: OutlineInputBorder(),
-                      ),
-                      items: TransactionType.values.map((type) {
-                        return DropdownMenuItem(
-                          value: type,
-                          child: Text(
-                            type == TransactionType.I
-                                ? "Ingreso"
-                                : (type == TransactionType.E
-                                    ? "Gasto"
-                                    : "Ahorro"),
-                          ),
-                        );
-                      }).toList(),
+                      _selectedType.toString().split('.').last,
                     ),
-                    const SizedBox(height: 10),
-                    // Campo para el monto
-                    TextField(
-                      controller: _amountController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: "Monto",
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 15),
 
-                    // Mostrar los campos adicionales solo si es tipo "Ingreso"
-                    if (_selectedType == TransactionType.I) ...[
-                      TextField(
-                        controller: _collaboratorController,
-                        decoration: const InputDecoration(
-                          labelText: "Colaborador",
-                          border: OutlineInputBorder(),
-                        ),
+                    const SizedBox(height: 10),
+
+                    // Selector de fecha
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey, width: 1),
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.grey[200], // Fondo claro
                       ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: _sourceController,
-                        decoration: const InputDecoration(
-                          labelText: "Fuente",
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      DropdownButtonFormField<String>(
-                        value: _selectedStatus,
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedStatus = value!;
-                          });
-                        },
-                        decoration: const InputDecoration(
-                          labelText: "Estado",
-                          border: OutlineInputBorder(),
-                        ),
-                        items: ["Pendiente", "Confirmado", "Rechazado"]
-                            .map((status) => DropdownMenuItem(
-                                  value: status,
-                                  child: Text(status),
-                                ))
-                            .toList(),
-                      ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: _descriptionController,
-                        decoration: const InputDecoration(
-                          labelText: "Descripción",
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      // Selector de fecha
-                      ListTile(
+                      child: ListTile(
                         title: Text(
                           _selectedDate == null
                               ? "Seleccionar fecha"
                               : "Fecha: ${_selectedDate!.toLocal()}"
                                   .split(' ')[0],
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
-                        trailing: const Icon(Icons.calendar_today),
+                        trailing: const Icon(Icons.calendar_today,
+                            color: Colors.blue),
                         onTap: () async {
                           DateTime? pickedDate = await showDatePicker(
                             context: context,
@@ -281,29 +237,111 @@ class _TransactionScreenState extends State<TransactionScreen> {
                           }
                         },
                       ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // Campo para el monto
+                    _buildInputField(
+                      "Monto",
+                      TextInputType.number,
+                      (value) {},
+                      controller: _amountController,
+                    ),
+
+                    const SizedBox(height: 15),
+
+                    // Campos adicionales según el tipo de transacción
+                    if (_selectedType == TransactionType.I) ...[
+                      _buildInputField(
+                        "Colaborador",
+                        TextInputType.text,
+                        (value) {},
+                        controller: _collaboratorController,
+                      ),
                       const SizedBox(height: 10),
+                      _buildInputField(
+                        "Fuente",
+                        TextInputType.text,
+                        (value) {},
+                        controller: _sourceController,
+                      ),
                     ],
+
+                    if (_selectedType == TransactionType.E) ...[
+                      _buildInputField(
+                        "Categoría",
+                        TextInputType.text,
+                        (value) {},
+                        controller: _collaboratorController,
+                      ),
+                    ],
+
+                    if (_selectedType == TransactionType.A) ...[
+                      _buildInputField(
+                        "Nombre del objetivo",
+                        TextInputType.text,
+                        (value) {},
+                        controller: _collaboratorController,
+                      ),
+                      const SizedBox(height: 10),
+                      _buildInputField(
+                        "Objetivo",
+                        TextInputType.text,
+                        (value) {},
+                        controller: _sourceController,
+                      ),
+                    ],
+
+                    const SizedBox(height: 10),
+
+                    // Selección del estado
+                    _buildDropdownField(
+                      "Estado",
+                      [
+                        {"id": "Pendiente", "label": "Pendiente"},
+                        {"id": "Confirmado", "label": "Confirmado"},
+                        {"id": "Rechazado", "label": "Rechazado"},
+                      ],
+                      (value) {
+                        setState(() {
+                          _selectedStatus = value;
+                        });
+                      },
+                      _selectedStatus,
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // Campo de descripción
+                    _buildTextArea(
+                      "Descripción",
+                      (value) {
+                        _descriptionController.text = value;
+                      },
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // Botón de guardar
                     ElevatedButton(
                       onPressed: () {
                         if (_amountController.text.isNotEmpty) {
-                          // Aquí guardas la transacción o haces lo que necesites con los datos
                           final transaction = Transaction(
                             id: DateTime.now().millisecondsSinceEpoch,
                             description: _descriptionController.text,
                             amount: double.parse(_amountController.text),
-                            type: _selectedType ??
-                                TransactionType
-                                    .I, // Si no hay valor, usa 'Ingreso' por defecto
+                            type: _selectedType ?? TransactionType.I,
                             date: _selectedDate ?? DateTime.now(),
                           );
 
-                          // Agregar la transacción a tu provider o base de datos
-                          // Ejemplo:
+                          // Guardar transacción (ejemplo con Provider)
                           // Provider.of<TransactionsProvider>(context, listen: false).addTransaction(transaction);
+
                           Navigator.pop(
-                              context); // Cierra el modal después de guardar
+                              context); // Cerrar modal después de guardar
                         } else {
-                          // Mensaje de error si falta el monto
+                          // Mostrar error si falta el monto
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                                 content: Text("Por favor, ingresa el monto")),
@@ -319,6 +357,82 @@ class _TransactionScreenState extends State<TransactionScreen> {
           },
         );
       },
+    );
+  }
+
+// Función para construir dropdowns reutilizables
+  Widget _buildDropdownField(
+    String label,
+    List<Map<String, String>> options,
+    Function(String) onChanged,
+    String selectedValue,
+  ) {
+    return DropdownButtonFormField<String>(
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      value: selectedValue,
+      items: options.map((option) {
+        return DropdownMenuItem<String>(
+          value: option['id']!,
+          child: Text(option['label']!),
+        );
+      }).toList(),
+      onChanged: (value) {
+        if (value != null) onChanged(value);
+      },
+    );
+  }
+
+// Función para construir campos de texto reutilizables
+  Widget _buildInputField(
+    String label,
+    TextInputType keyboardType,
+    Function(String) onChanged, {
+    TextEditingController? controller,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: TextStyle(fontWeight: FontWeight.bold)),
+          TextFormField(
+            controller: controller,
+            textAlign: TextAlign.center,
+            decoration: InputDecoration(
+              hintText: 'Ingrese $label',
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            keyboardType: keyboardType,
+            onChanged: onChanged,
+          ),
+        ],
+      ),
+    );
+  }
+
+// Función para construir área de texto reutilizable
+  Widget _buildTextArea(String label, Function(String) onChanged) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: TextStyle(fontWeight: FontWeight.bold)),
+          TextField(
+            maxLines: 3,
+            decoration: InputDecoration(
+              hintText: 'Ingrese $label',
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onChanged: onChanged,
+          ),
+        ],
+      ),
     );
   }
 }
