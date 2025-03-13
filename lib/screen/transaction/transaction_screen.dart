@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:app_finanzas/config/global.dart';
 import 'package:app_finanzas/app/model/transaction.dart';
+import 'package:app_finanzas/app/services/get_selects_service.dart';
 import 'package:app_finanzas/app/controller/transactions_provider.dart';
 import 'package:app_finanzas/screen/transaction/transaction_detail_screen.dart';
 
@@ -19,8 +20,50 @@ class TransactionScreen extends StatefulWidget {
 }
 
 class TransactionScreenState extends State<TransactionScreen> {
+  late Future<Map<String, dynamic>> _dataFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _dataFuture = _loadData();
+  }
+
+  Future<Map<String, dynamic>> _loadData() async {
+    return await GetSelectsService.fetchData(['partners', 'statuses']);
+  }
+
   @override
   Widget build(BuildContext context) {
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _dataFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildLoadingState();
+        }
+
+        if (snapshot.hasError) {
+          return _buildErrorState();
+        }
+
+        final data = snapshot.data ?? {};
+        final partners = data['partners'] ?? [];
+        final statuses = data['statuses'] ?? [];
+
+        return _buildContent(context, partners, statuses);
+      },
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return const Center(child: CircularProgressIndicator());
+  }
+
+  Widget _buildErrorState() {
+    return const Center(child: Text('Error al cargar los datos'));
+  }
+
+  Widget _buildContent(
+      BuildContext context, List<dynamic> partners, List<dynamic> statuses) {
     return Scaffold(
       appBar: _buildAppBar(),
       body: _buildTransactionList(),
@@ -66,7 +109,8 @@ class TransactionScreenState extends State<TransactionScreen> {
           margin: const EdgeInsets.symmetric(vertical: 10),
           child: ListTile(
             leading: Container(width: 40, height: 40, color: Colors.white),
-            title: Container(width: double.infinity, height: 16, color: Colors.white),
+            title: Container(
+                width: double.infinity, height: 16, color: Colors.white),
             subtitle: Container(width: 100, height: 14, color: Colors.white),
             trailing: Container(width: 20, height: 20, color: Colors.white),
           ),
@@ -76,16 +120,15 @@ class TransactionScreenState extends State<TransactionScreen> {
   }
 
   Widget _buildEmptyState() {
-    return const Center(
-      child: Text("No hay transacciones disponibles"),
-    );
+    return const Center(child: Text("No hay transacciones disponibles"));
   }
 
   Widget _buildTransactionsListView(List<Transaction> transactions) {
     return ListView.builder(
       padding: const EdgeInsets.all(20),
       itemCount: transactions.length,
-      itemBuilder: (context, index) => _buildTransactionItem(transactions[index]),
+      itemBuilder: (context, index) =>
+          _buildTransactionItem(transactions[index]),
     );
   }
 
@@ -94,10 +137,7 @@ class TransactionScreenState extends State<TransactionScreen> {
       elevation: 3,
       margin: const EdgeInsets.symmetric(vertical: 10),
       child: ListTile(
-        leading: Icon(
-          transaction.type.icon,
-          color: transaction.type.color,
-        ),
+        leading: Icon(transaction.type.icon, color: transaction.type.color),
         title: Text(transaction.description ?? ''),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -136,7 +176,8 @@ class TransactionScreenState extends State<TransactionScreen> {
   }
 
   void _refreshTransactions() {
-    Provider.of<TransactionsProvider>(context, listen: false).fetchTransactions();
+    Provider.of<TransactionsProvider>(context, listen: false)
+        .fetchTransactions();
   }
 
   void _navigateToDetail(int transactionId) async {
@@ -145,7 +186,8 @@ class TransactionScreenState extends State<TransactionScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => TransactionDetailScreen(transactionId: transactionId),
+        builder: (context) =>
+            TransactionDetailScreen(transactionId: transactionId),
       ),
     );
   }
@@ -175,7 +217,44 @@ class TransactionFormModalState extends State<TransactionFormModal> {
 
   DateTime _selectedDate = DateTime.now();
   TransactionType _selectedType = TransactionType.I;
-  String _selectedStatus = "Pendiente";
+  String? _selectedStatus;
+  String? _selectedPartner;
+  String? _selectedCategory;
+  String? _selectedGoal;
+
+  late Future<List<dynamic>> _statusesFuture;
+  late Future<List<dynamic>> _partnersFuture;
+  late Future<List<dynamic>> _categoriesFuture;
+  late Future<List<dynamic>> _goalsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _statusesFuture = _loadStatuses();
+    _partnersFuture = _loadPartners();
+    _categoriesFuture = _loadCategories();
+    _goalsFuture = _loadGoals();
+  }
+
+  Future<List<dynamic>> _loadStatuses() async {
+    final data = await GetSelectsService.fetchData(['statuses']);
+    return data['statuses'] ?? [];
+  }
+
+  Future<List<dynamic>> _loadPartners() async {
+    final data = await GetSelectsService.fetchData(['partners']);
+    return data['partners'] ?? [];
+  }
+
+  Future<List<dynamic>> _loadCategories() async {
+    final data = await GetSelectsService.fetchData(['expenses_categories']);
+    return data['expenses_categories'] ?? [];
+  }
+
+  Future<List<dynamic>> _loadGoals() async {
+    final data = await GetSelectsService.fetchData(['goals']);
+    return data['goals'] ?? [];
+  }
 
   @override
   void dispose() {
@@ -303,19 +382,20 @@ class TransactionFormModalState extends State<TransactionFormModal> {
       case TransactionType.I:
         return Column(
           children: [
-            _buildCollaboratorField('Colaborador'),
+            _buildPartnersDropdown(),
             const SizedBox(height: 15),
             _buildSourceField('Fuente'),
           ],
         );
       case TransactionType.E:
-        return _buildCollaboratorField('Categoría');
+        return _buildCategoriesDropdown();
       case TransactionType.A:
         return Column(
           children: [
             _buildCollaboratorField('Nombre del objetivo'),
             const SizedBox(height: 15),
-            _buildSourceField('Objetivo'),
+            // _buildSourceField('Objetivo'),
+            _buildGoalsDropdown(),
           ],
         );
     }
@@ -353,21 +433,139 @@ class TransactionFormModalState extends State<TransactionFormModal> {
   bool get _isFieldRequired => _selectedType != TransactionType.E;
 
   Widget _buildStatusDropdown() {
-    return DropdownButtonFormField<String>(
-      value: _selectedStatus,
-      decoration: const InputDecoration(
-        labelText: "Estado",
-        border: OutlineInputBorder(),
-      ),
-      onChanged: (value) => setState(() => _selectedStatus = value!),
-      items: ["Pendiente", "Confirmado", "Rechazado"].map(_buildStatusItem).toList(),
+    return FutureBuilder<List<dynamic>>(
+      future: _statusesFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const CircularProgressIndicator();
+        }
+
+        if (snapshot.hasError) {
+          return const Text('Error al cargar los estados');
+        }
+
+        final statuses = snapshot.data ?? [];
+
+        return DropdownButtonFormField<String>(
+          value: _selectedStatus,
+          decoration: const InputDecoration(
+            labelText: "Estado",
+            border: OutlineInputBorder(),
+          ),
+          onChanged: (value) => setState(() => _selectedStatus = value),
+          items: statuses.map<DropdownMenuItem<String>>((dynamic item) {
+            return DropdownMenuItem<String>(
+              value: "${item['id']}",
+              child: Text(item['label']),
+            );
+          }).toList(),
+        );
+      },
     );
   }
 
-  DropdownMenuItem<String> _buildStatusItem(String status) {
-    return DropdownMenuItem(
-      value: status,
-      child: Text(status),
+  Widget _buildPartnersDropdown() {
+    return FutureBuilder<List<dynamic>>(
+      future: _partnersFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const CircularProgressIndicator();
+        }
+
+        if (snapshot.hasError) {
+          return const Text('Error al cargar los colaboradores');
+        }
+
+        final partners = snapshot.data ?? [];
+
+        // Verifica que no haya valores duplicados en la lista de partners
+        final uniquePartners = partners.toSet().toList();
+
+        return DropdownButtonFormField<String>(
+          value: _selectedPartner,
+          decoration: const InputDecoration(
+            labelText: "Colaborador",
+            border: OutlineInputBorder(),
+          ),
+          onChanged: (value) => setState(() => _selectedPartner = value),
+          items: uniquePartners.map<DropdownMenuItem<String>>((dynamic item) {
+            return DropdownMenuItem<String>(
+              value: "${item['id']}",
+              child: Text(item['label']),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildCategoriesDropdown() {
+    return FutureBuilder<List<dynamic>>(
+      future: _categoriesFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const CircularProgressIndicator();
+        }
+
+        if (snapshot.hasError) {
+          return const Text('Error al cargar los categorias');
+        }
+
+        final categories = snapshot.data ?? [];
+
+        // Verifica que no haya valores duplicados en la lista de categories
+        final uniquecategories = categories.toSet().toList();
+
+        return DropdownButtonFormField<String>(
+          value: _selectedCategory,
+          decoration: const InputDecoration(
+            labelText: "Categoria",
+            border: OutlineInputBorder(),
+          ),
+          onChanged: (value) => setState(() => _selectedCategory = value),
+          items: uniquecategories.map<DropdownMenuItem<String>>((dynamic item) {
+            return DropdownMenuItem<String>(
+              value: "${item['id']}",
+              child: Text(item['label']),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildGoalsDropdown() {
+    return FutureBuilder<List<dynamic>>(
+      future: _goalsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const CircularProgressIndicator();
+        }
+
+        if (snapshot.hasError) {
+          return const Text('Error al cargar los objetivos');
+        }
+
+        final goals = snapshot.data ?? [];
+
+        // Verifica que no haya valores duplicados en la lista de goals
+        final uniqueGoals = goals.toSet().toList();
+
+        return DropdownButtonFormField<String>(
+          value: _selectedGoal,
+          decoration: const InputDecoration(
+            labelText: "Objetivo",
+            border: OutlineInputBorder(),
+          ),
+          onChanged: (value) => setState(() => _selectedGoal = value),
+          items: uniqueGoals.map<DropdownMenuItem<String>>((dynamic item) {
+            return DropdownMenuItem<String>(
+              value: "${item['id']}",
+              child: Text(item['label']),
+            );
+          }).toList(),
+        );
+      },
     );
   }
 
@@ -379,7 +577,8 @@ class TransactionFormModalState extends State<TransactionFormModal> {
         labelText: 'Descripción',
         border: OutlineInputBorder(),
       ),
-      validator: (value) => value?.isEmpty ?? true ? 'Ingrese una descripción' : null,
+      validator: (value) =>
+          value?.isEmpty ?? true ? 'Ingrese una descripción' : null,
     );
   }
 
@@ -402,16 +601,12 @@ class TransactionFormModalState extends State<TransactionFormModal> {
       amount: double.parse(_amountController.text),
       type: _selectedType,
       date: _selectedDate,
-      // collaborator: _collaboratorController.text,
+      // collaborator: _selectedPartner,
       source: _sourceController.text,
       // status: _selectedStatus,
     );
 
     context.read<TransactionsProvider>().addTransaction(context, transaction);
-
-    /* Provider.of<TransactionsProvider>(context, listen: false)
-        .addTransaction(context, transaction); */
-
     Navigator.pop(context);
   }
 }
