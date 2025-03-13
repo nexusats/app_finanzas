@@ -109,8 +109,7 @@ class TransactionScreenState extends State<TransactionScreen> {
           margin: const EdgeInsets.symmetric(vertical: 10),
           child: ListTile(
             leading: Container(width: 40, height: 40, color: Colors.white),
-            title: Container(
-                width: double.infinity, height: 16, color: Colors.white),
+            title: Container(width: double.infinity, height: 16, color: Colors.white),
             subtitle: Container(width: 100, height: 14, color: Colors.white),
             trailing: Container(width: 20, height: 20, color: Colors.white),
           ),
@@ -127,8 +126,7 @@ class TransactionScreenState extends State<TransactionScreen> {
     return ListView.builder(
       padding: const EdgeInsets.all(20),
       itemCount: transactions.length,
-      itemBuilder: (context, index) =>
-          _buildTransactionItem(transactions[index]),
+      itemBuilder: (context, index) => _buildTransactionItem(transactions[index]),
     );
   }
 
@@ -176,8 +174,7 @@ class TransactionScreenState extends State<TransactionScreen> {
   }
 
   void _refreshTransactions() {
-    Provider.of<TransactionsProvider>(context, listen: false)
-        .fetchTransactions();
+    Provider.of<TransactionsProvider>(context, listen: false).fetchTransactions();
   }
 
   void _navigateToDetail(int transactionId) async {
@@ -186,8 +183,7 @@ class TransactionScreenState extends State<TransactionScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) =>
-            TransactionDetailScreen(transactionId: transactionId),
+        builder: (context) => TransactionDetailScreen(transactionId: transactionId),
       ),
     );
   }
@@ -394,7 +390,6 @@ class TransactionFormModalState extends State<TransactionFormModal> {
           children: [
             _buildCollaboratorField('Nombre del objetivo'),
             const SizedBox(height: 15),
-            // _buildSourceField('Objetivo'),
             _buildGoalsDropdown(),
           ],
         );
@@ -433,132 +428,68 @@ class TransactionFormModalState extends State<TransactionFormModal> {
   bool get _isFieldRequired => _selectedType != TransactionType.E;
 
   Widget _buildStatusDropdown() {
-    return FutureBuilder<List<dynamic>>(
+    return _buildDropdown(
       future: _statusesFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const CircularProgressIndicator();
-        }
-
-        if (snapshot.hasError) {
-          return const Text('Error al cargar los estados');
-        }
-
-        final statuses = snapshot.data ?? [];
-
-        return DropdownButtonFormField<String>(
-          value: _selectedStatus,
-          decoration: const InputDecoration(
-            labelText: "Estado",
-            border: OutlineInputBorder(),
-          ),
-          onChanged: (value) => setState(() => _selectedStatus = value),
-          items: statuses.map<DropdownMenuItem<String>>((dynamic item) {
-            return DropdownMenuItem<String>(
-              value: "${item['id']}",
-              child: Text(item['label']),
-            );
-          }).toList(),
-        );
-      },
+      label: "Estado",
+      value: _selectedStatus,
+      onChanged: (value) => setState(() => _selectedStatus = value),
     );
   }
 
   Widget _buildPartnersDropdown() {
-    return FutureBuilder<List<dynamic>>(
+    return _buildDropdown(
       future: _partnersFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const CircularProgressIndicator();
-        }
-
-        if (snapshot.hasError) {
-          return const Text('Error al cargar los colaboradores');
-        }
-
-        final partners = snapshot.data ?? [];
-
-        // Verifica que no haya valores duplicados en la lista de partners
-        final uniquePartners = partners.toSet().toList();
-
-        return DropdownButtonFormField<String>(
-          value: _selectedPartner,
-          decoration: const InputDecoration(
-            labelText: "Colaborador",
-            border: OutlineInputBorder(),
-          ),
-          onChanged: (value) => setState(() => _selectedPartner = value),
-          items: uniquePartners.map<DropdownMenuItem<String>>((dynamic item) {
-            return DropdownMenuItem<String>(
-              value: "${item['id']}",
-              child: Text(item['label']),
-            );
-          }).toList(),
-        );
-      },
+      label: "Colaborador",
+      value: _selectedPartner,
+      onChanged: (value) => setState(() => _selectedPartner = value),
     );
   }
 
   Widget _buildCategoriesDropdown() {
-    return FutureBuilder<List<dynamic>>(
+    return _buildDropdown(
       future: _categoriesFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const CircularProgressIndicator();
-        }
-
-        if (snapshot.hasError) {
-          return const Text('Error al cargar los categorias');
-        }
-
-        final categories = snapshot.data ?? [];
-
-        // Verifica que no haya valores duplicados en la lista de categories
-        final uniquecategories = categories.toSet().toList();
-
-        return DropdownButtonFormField<String>(
-          value: _selectedCategory,
-          decoration: const InputDecoration(
-            labelText: "Categoria",
-            border: OutlineInputBorder(),
-          ),
-          onChanged: (value) => setState(() => _selectedCategory = value),
-          items: uniquecategories.map<DropdownMenuItem<String>>((dynamic item) {
-            return DropdownMenuItem<String>(
-              value: "${item['id']}",
-              child: Text(item['label']),
-            );
-          }).toList(),
-        );
-      },
+      label: "Categoría",
+      value: _selectedCategory,
+      onChanged: (value) => setState(() => _selectedCategory = value),
     );
   }
 
   Widget _buildGoalsDropdown() {
-    return FutureBuilder<List<dynamic>>(
+    return _buildDropdown(
       future: _goalsFuture,
+      label: "Objetivo",
+      value: _selectedGoal,
+      onChanged: (value) => setState(() => _selectedGoal = value),
+    );
+  }
+
+  Widget _buildDropdown({
+    required Future<List<dynamic>> future,
+    required String label,
+    required String? value,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return FutureBuilder<List<dynamic>>(
+      future: future,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const CircularProgressIndicator();
         }
 
         if (snapshot.hasError) {
-          return const Text('Error al cargar los objetivos');
+          return Text('Error al cargar $label');
         }
 
-        final goals = snapshot.data ?? [];
-
-        // Verifica que no haya valores duplicados en la lista de goals
-        final uniqueGoals = goals.toSet().toList();
+        final items = snapshot.data ?? [];
 
         return DropdownButtonFormField<String>(
-          value: _selectedGoal,
-          decoration: const InputDecoration(
-            labelText: "Objetivo",
-            border: OutlineInputBorder(),
+          value: value,
+          decoration: InputDecoration(
+            labelText: label,
+            border: const OutlineInputBorder(),
           ),
-          onChanged: (value) => setState(() => _selectedGoal = value),
-          items: uniqueGoals.map<DropdownMenuItem<String>>((dynamic item) {
+          onChanged: onChanged,
+          items: items.map<DropdownMenuItem<String>>((dynamic item) {
             return DropdownMenuItem<String>(
               value: "${item['id']}",
               child: Text(item['label']),
@@ -577,8 +508,7 @@ class TransactionFormModalState extends State<TransactionFormModal> {
         labelText: 'Descripción',
         border: OutlineInputBorder(),
       ),
-      validator: (value) =>
-          value?.isEmpty ?? true ? 'Ingrese una descripción' : null,
+      validator: (value) => value?.isEmpty ?? true ? 'Ingrese una descripción' : null,
     );
   }
 
