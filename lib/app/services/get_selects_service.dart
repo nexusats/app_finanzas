@@ -7,13 +7,13 @@ class GetSelectsService {
   static Future<Map<String, dynamic>> fetchData(List<String> fields) async {
     final String baseUrl = dotenv.env['API_BASE_URL'] ?? "";
 
-    Future<String?> _getToken() async {
+    Future<String?> getToken() async {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getString("_token");
     }
 
-    Future<Map<String, String>> _getHeaders() async {
-      String? token = await _getToken();
+    Future<Map<String, String>> getHeaders() async {
+      String? token = await getToken();
       return {
         'Content-Type': 'application/json',
         'Authorization': token != null ? 'Bearer $token' : '',
@@ -23,7 +23,7 @@ class GetSelectsService {
     // Convertimos el array de campos a query parameters
     final String queryString = Uri.encodeQueryComponent(jsonEncode(fields));
     final Uri url = Uri.parse('$baseUrl/getData?fields=$queryString');
-    final headers = await _getHeaders();
+    final headers = await getHeaders();
 
     try {
       final response = await http.get(
