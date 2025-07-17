@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:app_finanzas/config/global.dart';
 import 'package:app_finanzas/screen/auth/login_screen.dart';
 import 'package:app_finanzas/app/controller/auth_provider.dart';
+import 'package:app_finanzas/screen/category/category_list_screen.dart';
 import 'package:app_finanzas/screen/transaction/transaction_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -35,7 +36,8 @@ class _HomeScreenState extends State<HomeScreen> {
         final List<Widget> screens = [
           _buildHomeScreen(),
           const TransactionScreen(showAppBar: false),
-          _buildExpenseCategoryScreen(),
+          const CategoryListScreen(),
+          // _buildExpenseCategoryScreen(),
           _buildSettingsScreen(authProvider),
         ];
 
@@ -112,26 +114,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   } */
-
-  Widget _buildExpenseCategoryScreen() {
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: List.generate(5, (index) => _buildExpenseCategoryItem(index)),
-    );
-  }
-
-  Widget _buildExpenseCategoryItem(int index) {
-    return Card(
-      elevation: 3,
-      margin: const EdgeInsets.symmetric(vertical: 10),
-      child: ListTile(
-        leading: const Icon(Icons.category, color: Colors.blue),
-        title: Text("Categoría de Gasto #$index"),
-        subtitle: Text("Presupuesto asignado: \$${(index + 1) * 200}"),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-      ),
-    );
-  }
 
   Widget _buildSettingsScreen(AuthProvider authProvider) {
     return Padding(
