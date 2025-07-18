@@ -20,6 +20,10 @@ class TransactionsProvider extends ChangeNotifier {
     _loadTransactions();
   }
 
+  double getTotalSavings() => _transactions
+    .where((t) => t.type == TransactionType.A)
+    .fold(0.0, (sum, t) => sum + t.amount);
+
   double getTotalIncomes() => _transactions
       .where((t) => t.type == TransactionType.I)
       .fold(0.0, (sum, t) => sum + t.amount);
@@ -29,6 +33,10 @@ class TransactionsProvider extends ChangeNotifier {
       .fold(0.0, (sum, t) => sum + t.amount);
 
   double getBalance() => getTotalIncomes() - getTotalExpenses();
+
+  double getTotalByType(TransactionType type) => _transactions
+    .where((t) => t.type == type)
+    .fold(0.0, (sum, t) => sum + t.amount);
 
   Future<void> fetchTransactions() async {
     await _loadTransactions();
