@@ -25,10 +25,6 @@ class CategoryService {
     final url = Uri.parse('$baseUrl/$module');
     final headers = await _getHeaders();
 
-    print('Enviando petición a: $url'); // 1. URL de la petición
-    print('Headers: $headers'); // 2. Headers enviados
-    print('Datos enviados: ${jsonEncode(categoryData)}'); // 3. Datos enviados
-
     final response = await http.post(
       url,
       headers: headers,
