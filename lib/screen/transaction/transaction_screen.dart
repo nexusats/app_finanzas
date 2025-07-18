@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:app_finanzas/config/global.dart';
 import 'package:app_finanzas/app/model/transaction.dart';
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:app_finanzas/app/services/get_selects_service.dart';
 import 'package:app_finanzas/app/controller/transactions_provider.dart';
 import 'package:app_finanzas/screen/transaction/transaction_detail_screen.dart';
@@ -153,21 +154,26 @@ class TransactionScreenState extends State<TransactionScreen> {
   }
 
   Widget _buildFloatingActionButtons() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
+    return SpeedDial(
+      icon: Icons.menu,
+      activeIcon: Icons.close,
+      backgroundColor: Colors.blue,
+      foregroundColor: Colors.white,
+      overlayOpacity: 0.1,
+      spacing: 12,
+      spaceBetweenChildren: 12,
       children: [
-        FloatingActionButton(
-          heroTag: "btn_refresh",
-          onPressed: _refreshTransactions,
-          backgroundColor: Colors.orange,
+        SpeedDialChild(
           child: const Icon(Icons.refresh, color: Colors.white),
+          backgroundColor: Colors.orange,
+          label: 'Refrescar',
+          onTap: _refreshTransactions,
         ),
-        const SizedBox(height: 10),
-        FloatingActionButton(
-          heroTag: "btn_add",
-          onPressed: () => _showAddTransactionModal(),
-          backgroundColor: Colors.blue,
+        SpeedDialChild(
           child: const Icon(Icons.add, color: Colors.white),
+          backgroundColor: Colors.blue,
+          label: 'Agregar',
+          onTap: _showAddTransactionModal,
         ),
       ],
     );
