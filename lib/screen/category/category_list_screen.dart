@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:app_finanzas/app/model/category_expense.dart';
 import 'package:app_finanzas/app/services/category_service.dart';
 import 'package:app_finanzas/screen/category/category_edit_screen.dart';
@@ -21,8 +22,9 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
   }
 
   void _loadCategories() {
-    _categoriesFuture = _fetchAndConvertCategories();
-    setState(() {});
+    setState(() {
+      _categoriesFuture = _fetchAndConvertCategories();
+    });
   }
 
   Future<List<CategoryExpense>> _fetchAndConvertCategories() async {
@@ -62,12 +64,6 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Categorías de Gastos'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () => _navigateToEditScreen(null),
-          ),
-        ],
       ),
       body: FutureBuilder<List<CategoryExpense>>(
         future: _categoriesFuture,
@@ -81,6 +77,7 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
           } else {
             final categories = snapshot.data!;
             return ListView.builder(
+              padding: const EdgeInsets.only(bottom: 100),
               itemCount: categories.length,
               itemBuilder: (context, index) {
                 final category = categories[index];
@@ -107,6 +104,27 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
             );
           }
         },
+      ),
+
+      // FAB expandible
+      floatingActionButton: SpeedDial(
+        icon: Icons.menu,
+        activeIcon: Icons.close,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Colors.white,
+        overlayOpacity: 0.1,
+        children: [
+          SpeedDialChild(
+            child: const Icon(Icons.add),
+            label: 'Nueva Categoría',
+            onTap: () => _navigateToEditScreen(null),
+          ),
+          SpeedDialChild(
+            child: const Icon(Icons.refresh),
+            label: 'Refrescar',
+            onTap: _loadCategories,
+          ),
+        ],
       ),
     );
   }
