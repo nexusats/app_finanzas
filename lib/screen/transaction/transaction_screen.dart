@@ -56,8 +56,23 @@ class TransactionScreenState extends State<TransactionScreen> {
   }
 
   Widget _buildLoadingState() {
-    return const Center(child: CircularProgressIndicator());
-  }
+  return Scaffold(
+    backgroundColor: ConfigGlobal.backgroundColor,
+    body: Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(32),
+          topRight: Radius.circular(32),
+        ),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: const Center(
+        child: CircularProgressIndicator(),
+      ),
+    ),
+  );
+}
 
   Widget _buildErrorState() {
     return const Center(child: Text('Error al cargar los datos'));
@@ -87,7 +102,7 @@ class TransactionScreenState extends State<TransactionScreen> {
     return widget.showAppBar
         ? AppBar(
             title: const Text("Transacciones"),
-            backgroundColor: Colors.blue,
+            backgroundColor: ConfigGlobal.backgroundColor,
             foregroundColor: Colors.white,
             actions: [
               IconButton(
@@ -170,7 +185,7 @@ class TransactionScreenState extends State<TransactionScreen> {
     return SpeedDial(
       icon: Icons.menu,
       activeIcon: Icons.close,
-      backgroundColor: Colors.blue,
+      backgroundColor: ConfigGlobal.backgroundColor,
       foregroundColor: Colors.white,
       overlayOpacity: 0.1,
       spacing: 12,
@@ -184,7 +199,7 @@ class TransactionScreenState extends State<TransactionScreen> {
         ),
         SpeedDialChild(
           child: const Icon(Icons.add, color: Colors.white),
-          backgroundColor: Colors.blue,
+          backgroundColor: ConfigGlobal.backgroundColor,
           label: 'Agregar',
           onTap: _showAddTransactionModal,
         ),
