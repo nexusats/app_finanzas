@@ -67,7 +67,18 @@ class TransactionScreenState extends State<TransactionScreen> {
       BuildContext context, List<dynamic> partners, List<dynamic> statuses) {
     return Scaffold(
       appBar: _buildAppBar(),
-      body: _buildTransactionList(),
+      backgroundColor: ConfigGlobal.backgroundColor,
+      body: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(32),
+            topRight: Radius.circular(32),
+          ),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: _buildTransactionList(),
+      ),
       floatingActionButton: _buildFloatingActionButtons(),
     );
   }
@@ -110,7 +121,8 @@ class TransactionScreenState extends State<TransactionScreen> {
           margin: const EdgeInsets.symmetric(vertical: 10),
           child: ListTile(
             leading: Container(width: 40, height: 40, color: Colors.white),
-            title: Container(width: double.infinity, height: 16, color: Colors.white),
+            title: Container(
+                width: double.infinity, height: 16, color: Colors.white),
             subtitle: Container(width: 100, height: 14, color: Colors.white),
             trailing: Container(width: 20, height: 20, color: Colors.white),
           ),
@@ -127,7 +139,8 @@ class TransactionScreenState extends State<TransactionScreen> {
     return ListView.builder(
       padding: const EdgeInsets.all(20),
       itemCount: transactions.length,
-      itemBuilder: (context, index) => _buildTransactionItem(transactions[index]),
+      itemBuilder: (context, index) =>
+          _buildTransactionItem(transactions[index]),
     );
   }
 
@@ -180,7 +193,8 @@ class TransactionScreenState extends State<TransactionScreen> {
   }
 
   void _refreshTransactions() {
-    Provider.of<TransactionsProvider>(context, listen: false).fetchTransactions();
+    Provider.of<TransactionsProvider>(context, listen: false)
+        .fetchTransactions();
   }
 
   void _navigateToDetail(int transactionId) async {
@@ -189,7 +203,8 @@ class TransactionScreenState extends State<TransactionScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => TransactionDetailScreen(transactionId: transactionId),
+        builder: (context) =>
+            TransactionDetailScreen(transactionId: transactionId),
       ),
     );
   }
@@ -198,7 +213,20 @@ class TransactionScreenState extends State<TransactionScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) => const TransactionFormModal(),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.85,
+          minChildSize: 0.4,
+          maxChildSize: 0.95,
+          builder: (_, scrollController) {
+            return SingleChildScrollView(
+              controller: scrollController,
+              child: TransactionFormModal(),
+            );
+          },
+        );
+      },
     );
   }
 }
@@ -514,7 +542,8 @@ class TransactionFormModalState extends State<TransactionFormModal> {
         labelText: 'Descripción',
         border: OutlineInputBorder(),
       ),
-      validator: (value) => value?.isEmpty ?? true ? 'Ingrese una descripción' : null,
+      validator: (value) =>
+          value?.isEmpty ?? true ? 'Ingrese una descripción' : null,
     );
   }
 

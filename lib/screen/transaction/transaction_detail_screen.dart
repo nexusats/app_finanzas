@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:app_finanzas/config/global.dart';
 import 'package:app_finanzas/widgets/custom_snackbar.dart';
 import 'package:app_finanzas/app/controller/transactions_provider.dart';
 
@@ -47,7 +48,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Detalle de Transacción"),
-        backgroundColor: Colors.blue,
+        backgroundColor: ConfigGlobal.backgroundColor,
         foregroundColor: Colors.white,
       ),
       body: Consumer<TransactionsProvider>(
