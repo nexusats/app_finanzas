@@ -91,7 +91,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return Consumer<TransactionsProvider>(
       builder: (context, provider, _) {
         return Container(
-          // Fondo y bordes redondeados solo arriba
           decoration: const BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.only(
@@ -112,44 +111,46 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 20),
               Expanded(
-                child: provider.isLoading
-                    ? GridView.count(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        childAspectRatio: 1.1,
-                        children:
-                            List.generate(4, (_) => buildFinanceCardSkeleton()),
-                      )
-                    : GridView.count(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        childAspectRatio: 1.1,
-                        children: [
+                child: GridView.count(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 0.9,
+                  children: provider.isLoading
+                      ? List.generate(5, (_) => buildFinanceCardSkeleton())
+                      : [
                           _buildFinanceCard(
-                              "Gastos",
-                              provider.getTotalExpenses(),
-                              Icons.trending_down,
-                              Colors.red),
+                            "Libertad Financiera",
+                            provider.getTotalDebt(),
+                            Icons.lock_open_rounded,
+                            Colors.deepOrangeAccent,
+                          ),
                           _buildFinanceCard(
-                              "Ingresos",
-                              provider.getTotalIncomes(),
-                              Icons.trending_up,
-                              Colors.green),
+                            "Gastos Conscientes",
+                            provider.getTotalExpenses(),
+                            Icons.account_balance_wallet_outlined,
+                            Colors.orangeAccent,
+                          ),
                           _buildFinanceCard(
-                              "Ahorros",
-                              provider.getTotalSavings(),
-                              Icons.savings,
-                              Colors.blue),
-                          _buildFinanceCard("Balance", provider.getBalance(),
-                              Icons.balance, Colors.purple),
+                            "Prosperidad",
+                            provider.getTotalIncomes(),
+                            Icons.trending_up_rounded,
+                            Colors.teal,
+                          ),
+                          _buildFinanceCard(
+                            "Capital Semilla",
+                            provider.getTotalSavings(),
+                            Icons.savings_rounded,
+                            Colors.indigoAccent,
+                          ),
+                          _buildFinanceCard(
+                            "Balance",
+                            provider.getBalance(),
+                            Icons.auto_graph_rounded,
+                            Colors.deepPurpleAccent,
+                          ),
                         ],
-                      ),
+                ),
               ),
             ],
           ),
@@ -162,30 +163,39 @@ class _HomeScreenState extends State<HomeScreen> {
       String title, double amount, IconData icon, Color color) {
     return Card(
       elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Container(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shadowColor: color.withOpacity(0.2),
+      child: Padding(
         padding: const EdgeInsets.all(12),
-        height: 130,
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          mainAxisSize: MainAxisSize.min, // 👈 Esto evita el desbordamiento
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, size: 32, color: color),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, size: 24, color: color),
+            ),
+            const SizedBox(height: 8),
             Text(
               title,
               style: const TextStyle(
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
-                fontSize: 14,
               ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                "\$${amount.toStringAsFixed(2)}",
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
+            const SizedBox(height: 4),
+            Text(
+              "\$${amount.toStringAsFixed(2)}",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: color,
               ),
             ),
           ],

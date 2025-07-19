@@ -32,6 +32,10 @@ class TransactionsProvider extends ChangeNotifier {
       .where((t) => (t.type == TransactionType.E && t.statusId != 8))
       .fold(0.0, (sum, t) => sum + t.amount);
 
+    double getTotalDebt() => _transactions
+      .where((t) => (t.type == TransactionType.E && t.statusId == 8))
+      .fold(0.0, (sum, t) => sum + t.amount);
+
   double getBalance() => getTotalIncomes() - getTotalExpenses();
 
   double getTotalByType(TransactionType type) => _transactions
@@ -54,8 +58,6 @@ class TransactionsProvider extends ChangeNotifier {
         ..clear()
         ..addAll(fetchedTransactions.map((e) {
           final tx = Transaction.fromJson(e as Map<String, dynamic>);
-          print(
-              "🚀 Transacción cargada: id=${tx.id}, statusId=${tx.statusId}, tipo=${tx.type}");
           return tx;
         }));
 
