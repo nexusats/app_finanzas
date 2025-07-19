@@ -65,7 +65,6 @@ class _HomeScreenState extends State<HomeScreen> {
         elevation: 0,
         automaticallyImplyLeading: false,
         titleSpacing: 0,
-        foregroundColor: Colors.red,
       ),
     );
   }
