@@ -41,6 +41,7 @@ class TransactionService {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
+      print("🚀 Transacción cargada: data=${data}");
       return data['data'];
     } else {
       return [];

@@ -10,7 +10,7 @@ class Transaction {
   final int? categoryId;
   final int? goalId;
   final String? goal;
-
+  final int? statusId;
 
   Transaction({
     this.id,
@@ -22,7 +22,8 @@ class Transaction {
     this.source,
     this.categoryId,
     this.goalId,
-    this.goal
+    this.goal,
+    this.statusId
   });
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
@@ -36,7 +37,8 @@ class Transaction {
       source: json['source'] ?? '',
       categoryId: json['categoryId'],
       goalId: json['goalId'],
-      goal: json['goal'] ?? ''
+      goal: json['goal'] ?? '',
+      statusId: json['status_id'] ?? 0
     );
   }
 
@@ -51,7 +53,8 @@ class Transaction {
       'source': source,
       'categoryId': categoryId,
       'goalId': goalId,
-      'goal': goal
+      'goal': goal,
+      'statusId': statusId
     };
   }
 }

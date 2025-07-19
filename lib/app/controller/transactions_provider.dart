@@ -21,22 +21,22 @@ class TransactionsProvider extends ChangeNotifier {
   }
 
   double getTotalSavings() => _transactions
-    .where((t) => t.type == TransactionType.A)
-    .fold(0.0, (sum, t) => sum + t.amount);
+      .where((t) => t.type == TransactionType.A)
+      .fold(0.0, (sum, t) => sum + t.amount);
 
   double getTotalIncomes() => _transactions
       .where((t) => t.type == TransactionType.I)
       .fold(0.0, (sum, t) => sum + t.amount);
 
   double getTotalExpenses() => _transactions
-      .where((t) => t.type == TransactionType.E)
+      .where((t) => (t.type == TransactionType.E && t.statusId != 8))
       .fold(0.0, (sum, t) => sum + t.amount);
 
   double getBalance() => getTotalIncomes() - getTotalExpenses();
 
   double getTotalByType(TransactionType type) => _transactions
-    .where((t) => t.type == type)
-    .fold(0.0, (sum, t) => sum + t.amount);
+      .where((t) => t.type == type)
+      .fold(0.0, (sum, t) => sum + t.amount);
 
   Future<void> fetchTransactions() async {
     await _loadTransactions();
@@ -52,8 +52,12 @@ class TransactionsProvider extends ChangeNotifier {
       final fetchedTransactions = await _transactionService.getTransactions();
       _transactions
         ..clear()
-        ..addAll(fetchedTransactions
-            .map((e) => Transaction.fromJson(e as Map<String, dynamic>)));
+        ..addAll(fetchedTransactions.map((e) {
+          final tx = Transaction.fromJson(e as Map<String, dynamic>);
+          print(
+              "🚀 Transacción cargada: id=${tx.id}, statusId=${tx.statusId}, tipo=${tx.type}");
+          return tx;
+        }));
 
       await _saveTransactions();
     } catch (_) {
