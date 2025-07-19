@@ -71,20 +71,28 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildBottomNavigationBar() {
     return BottomNavigationBar(
-      currentIndex: _selectedIndex,
-      onTap: _onItemTapped,
-      selectedItemColor: Colors.blue,
-      unselectedItemColor: Colors.grey,
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: "Inicio"),
-        BottomNavigationBarItem(
-            icon: Icon(Icons.money_outlined), label: "Transacciones"),
-        BottomNavigationBarItem(
-            icon: Icon(Icons.tag), label: "Gastos Categoría"),
-        BottomNavigationBarItem(
-            icon: Icon(Icons.settings), label: "Configuración"),
-      ],
-    );
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        selectedItemColor: ConfigGlobal.backgroundColor,
+        unselectedItemColor: Colors.grey,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.dashboard_rounded),
+            label: "Inicio",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.swap_vert_circle_rounded),
+            label: "Movimientos",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.category_rounded),
+            label: "Categorías",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.tune_rounded),
+            label: "Ajustes",
+          ),
+        ]);
   }
 
   Widget _buildHomeScreen() {
@@ -162,13 +170,13 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildFinanceCard(
       String title, double amount, IconData icon, Color color) {
     return Card(
-      elevation: 4,
+      elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       shadowColor: color.withOpacity(0.2),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
-          mainAxisSize: MainAxisSize.min, // 👈 Esto evita el desbordamiento
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
@@ -183,7 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(
               title,
               style: const TextStyle(
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
               maxLines: 2,
