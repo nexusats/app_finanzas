@@ -128,7 +128,7 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
       floatingActionButton: SpeedDial(
         icon: Icons.menu,
         activeIcon: Icons.close,
-        backgroundColor: Theme.of(context).colorScheme.primary,
+        backgroundColor: ConfigGlobal.backgroundColor,
         foregroundColor: Colors.white,
         overlayOpacity: 0.1,
         children: [
