@@ -218,8 +218,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSettingsScreen(AuthProvider authProvider) {
-    return Padding(
-      padding: const EdgeInsets.all(20),
+    return Container(
+      padding: const EdgeInsets.only(top: 40, left: 20, right: 20),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(32),
+          topRight: Radius.circular(32),
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
