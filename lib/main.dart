@@ -17,7 +17,13 @@ Future<void> main() async {
 
   await dotenv.load(fileName: envFile); // Carga las variables de entorno
   WidgetsFlutterBinding.ensureInitialized(); // Asegura que el framework esté inicializado
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky); // Full screen
+  // SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky); // Full screen
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent, // Fondo transparente
+    statusBarIconBrightness: Brightness.light, // Íconos blancos en Android
+    statusBarBrightness: Brightness.dark, // Para iOS
+  ));
   runApp(const MyApp());
 }
 

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 class ConfigGlobal {
 
   // Colores de fondo
-  static const Color backgroundColor = Color(0xFF36A2EB); // Color principal
+  static const Color backgroundColor = Color(0xFF4B2EFF); // Color principal
   static const Color backgroundSecondColor = Color(0xFFf8f9fa); // Color para negativos
   static const Color negativeColor = Colors.red; // Color para negativos
   static const Color positiveColor = Color(0xFF007A33); // Color para positivos

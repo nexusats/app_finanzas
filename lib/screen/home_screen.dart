@@ -45,7 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         return Theme(
           data: ThemeData.light().copyWith(
-            scaffoldBackgroundColor: ConfigGlobal.backgroundSecondColor,
+            scaffoldBackgroundColor: ConfigGlobal.backgroundColor,
           ),
           child: Scaffold(
             appBar: _buildAppBar(),
@@ -58,10 +58,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      title: const Text("Finanzas"),
-      backgroundColor: Colors.blue,
-      foregroundColor: Colors.white,
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(40),
+      child: AppBar(
+        backgroundColor: ConfigGlobal.backgroundColor,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        titleSpacing: 0,
+        foregroundColor: Colors.red,
+      ),
     );
   }
 
@@ -86,8 +91,15 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildHomeScreen() {
     return Consumer<TransactionsProvider>(
       builder: (context, provider, _) {
-
-        return Padding(
+        return Container(
+          // Fondo y bordes redondeados solo arriba
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(32),
+              topRight: Radius.circular(32),
+            ),
+          ),
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -101,44 +113,44 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 20),
               Expanded(
-                child: /* GridView.count(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  childAspectRatio: 1.1,
-                  children: [
-                    _buildFinanceCard("Gastos", provider.getTotalExpenses(), Icons.trending_down, Colors.red),
-                    _buildFinanceCard("Ingresos", provider.getTotalIncomes(), Icons.trending_up, Colors.green),
-                    _buildFinanceCard("Ahorros", provider.getTotalSavings(), Icons.savings, Colors.blue),
-                    _buildFinanceCard("Balance", provider.getBalance(), Icons.balance, Colors.purple),
-                  ],
-                ), */
-                provider.isLoading
-                  ? GridView.count(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      childAspectRatio: 1.1,
-                      children: List.generate(4, (_) => buildFinanceCardSkeleton()),
-                    )
-                  : GridView.count(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      childAspectRatio: 1.1,
-                      children: [
-                        _buildFinanceCard("Gastos", provider.getTotalExpenses(), Icons.trending_down, Colors.red),
-                        _buildFinanceCard("Ingresos", provider.getTotalIncomes(), Icons.trending_up, Colors.green),
-                        _buildFinanceCard("Ahorros", provider.getTotalSavings(), Icons.savings, Colors.blue),
-                        _buildFinanceCard("Balance", provider.getBalance(), Icons.balance, Colors.purple),
-                      ],
-                    ),
+                child: provider.isLoading
+                    ? GridView.count(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        childAspectRatio: 1.1,
+                        children:
+                            List.generate(4, (_) => buildFinanceCardSkeleton()),
+                      )
+                    : GridView.count(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        childAspectRatio: 1.1,
+                        children: [
+                          _buildFinanceCard(
+                              "Gastos",
+                              provider.getTotalExpenses(),
+                              Icons.trending_down,
+                              Colors.red),
+                          _buildFinanceCard(
+                              "Ingresos",
+                              provider.getTotalIncomes(),
+                              Icons.trending_up,
+                              Colors.green),
+                          _buildFinanceCard(
+                              "Ahorros",
+                              provider.getTotalSavings(),
+                              Icons.savings,
+                              Colors.blue),
+                          _buildFinanceCard("Balance", provider.getBalance(),
+                              Icons.balance, Colors.purple),
+                        ],
+                      ),
               ),
             ],
           ),
@@ -147,7 +159,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildFinanceCard(String title, double amount, IconData icon, Color color) {
+  Widget _buildFinanceCard(
+      String title, double amount, IconData icon, Color color) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
