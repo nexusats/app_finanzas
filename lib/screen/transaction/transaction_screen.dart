@@ -566,9 +566,9 @@ class TransactionFormModalState extends State<TransactionFormModal> {
       amount: double.parse(_amountController.text),
       type: _selectedType,
       date: _selectedDate,
-      // collaborator: _selectedPartner,
+      partnerId: int.tryParse(_selectedPartner ?? ''),
+      statusId: int.tryParse(_selectedStatus ?? ''),
       source: _sourceController.text,
-      // status: _selectedStatus,
     );
 
     context.read<TransactionsProvider>().addTransaction(context, transaction);
