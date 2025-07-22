@@ -172,6 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      // ignore: deprecated_member_use
       shadowColor: color.withOpacity(0.2),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -182,6 +183,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
+                // ignore: deprecated_member_use
                 color: color.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
