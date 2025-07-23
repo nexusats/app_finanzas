@@ -238,8 +238,10 @@ class _HomeScreenState extends State<HomeScreen> {
       width: 200,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
+        // ignore: deprecated_member_use
         color: Colors.blueGrey.withOpacity(0.08),
         borderRadius: BorderRadius.circular(16),
+        // ignore: deprecated_member_use
         border: Border.all(color: Colors.blueGrey.withOpacity(0.3)),
       ),
       child: Column(
@@ -252,7 +254,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  goal.name ?? "Sin nombre",
+                  goal.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontWeight: FontWeight.w600),
