@@ -2,6 +2,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:app_finanzas/config/global.dart';
+import 'package:app_finanzas/config/format_utils.dart';
 import 'package:app_finanzas/screen/auth/login_screen.dart';
 import 'package:app_finanzas/app/controller/auth_provider.dart';
 import 'package:app_finanzas/app/controller/transactions_provider.dart';
@@ -201,7 +202,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              "\$${amount.toStringAsFixed(2)}",
+              formatCurrency(amount),
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
