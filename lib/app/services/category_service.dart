@@ -20,7 +20,6 @@ class CategoryService {
     };
   }
 
-  // Crear categoría
   Future<bool> createCategory(Map<String, dynamic> categoryData) async {
     final url = Uri.parse('$baseUrl/$module');
     final headers = await _getHeaders();
@@ -34,7 +33,6 @@ class CategoryService {
     return response.statusCode == 201;
   }
 
-  // Obtener todas las categorías
   Future<List<dynamic>> getCategories() async {
     final url = Uri.parse('$baseUrl/$module');
     final headers = await _getHeaders();
@@ -49,7 +47,6 @@ class CategoryService {
     }
   }
 
-  // Obtener una categoría por ID
   Future<Map<String, dynamic>?> getCategoryById(int id) async {
     final url = Uri.parse('$baseUrl/$module/$id');
     final headers = await _getHeaders();
@@ -63,7 +60,6 @@ class CategoryService {
     }
   }
 
-  // Actualizar categoría
   Future<bool> updateCategory(int id, Map<String, dynamic> categoryData) async {
     final url = Uri.parse('$baseUrl/$module/$id');
     final headers = await _getHeaders();
@@ -77,7 +73,6 @@ class CategoryService {
     return response.statusCode == 201;
   }
 
-  // Eliminar categoría
   Future<bool> deleteCategory(int id) async {
     final url = Uri.parse('$baseUrl/$module/$id');
     final headers = await _getHeaders();

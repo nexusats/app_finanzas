@@ -2,69 +2,84 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_finanzas/app/model/category_expense.dart';
+import 'package:app_finanzas/app/services/category_service.dart';
 
-class CategoryExpenseProvider extends ChangeNotifier {
-  final List<CategoryExpense> _categories = [];
-  late SharedPreferences prefs;
+class CategoryExpenseProvider with ChangeNotifier {
+  final CategoryService _categoryService = CategoryService();
+  final String _storageKey = 'categories_expense';
+
+  List<CategoryExpense> _categories = [];
+  bool _isLoading = true;
+
+  List<CategoryExpense> get categories => _categories;
+  bool get isLoading => _isLoading;
 
   CategoryExpenseProvider() {
-    _initPreferences();
+    _initProvider();
   }
 
-  List<CategoryExpense> get categories => List.unmodifiable(_categories);
-
-  Future<void> _initPreferences() async {
-    prefs = await SharedPreferences.getInstance();
-    await _loadCategories();
+  Future<void> _initProvider() async {
+    await _loadCategoriesFromLocal();
+    fetchFromApiAndUpdateLocal(); // ⚡ Refresca desde API sin bloquear UI
   }
 
-  /// Cargar categorías desde SharedPreferences
-  Future<void> _loadCategories() async {
-    final storedCategories = prefs.getStringList("_categories") ?? [];
+  Future<void> _loadCategoriesFromLocal() async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getString(_storageKey);
 
-    if (storedCategories.isNotEmpty) {
-      _categories.clear();
+    if (data != null) {
+      _categories = (jsonDecode(data) as List)
+          .map((e) => CategoryExpense.fromJson(e))
+          .toList();
+    } else {
+      _categories = [];
+    }
 
-      for (var jsonString in storedCategories) {
-        try {
-          final data = jsonDecode(jsonString);
-          _categories.add(CategoryExpense.fromJson(data));
-        } catch (e) {
-          debugPrint("Error al decodificar JSON: $e");
-        }
-      }
+    _isLoading = false;
+    notifyListeners();
+  }
 
+  Future<void> reloadCategoriesFromLocalStorage() async {
+    _isLoading = true;
+    notifyListeners();
+    await _loadCategoriesFromLocal();
+  }
+
+  Future<void> _saveCategoriesToLocal() async {
+    final prefs = await SharedPreferences.getInstance();
+    final encoded = jsonEncode(_categories.map((e) => e.toJson()).toList());
+    await prefs.setString(_storageKey, encoded);
+  }
+
+  Future<bool> createCategory(Map<String, dynamic> categoryData) async {
+    final success = await _categoryService.createCategory(categoryData);
+    if (success) {
+      await fetchFromApiAndUpdateLocal();
+    }
+    return success;
+  }
+
+  Future<bool> updateCategory(int id, Map<String, dynamic> categoryData) async {
+    final success = await _categoryService.updateCategory(id, categoryData);
+    if (success) {
+      await fetchFromApiAndUpdateLocal();
+    }
+    return success;
+  }
+
+  Future<void> fetchFromApiAndUpdateLocal() async {
+    final response = await _categoryService.getCategories();
+    _categories = response.map((e) => CategoryExpense.fromJson(e)).toList();
+    await _saveCategoriesToLocal();
+    notifyListeners();
+  }
+
+  Future<void> removeCategory(CategoryExpense category) async {
+    final success = await _categoryService.deleteCategory(category.id!);
+    if (success) {
+      _categories.removeWhere((e) => e.id == category.id);
+      await _saveCategoriesToLocal();
       notifyListeners();
     }
-  }
-
-  /// Guardar categorías en SharedPreferences
-  Future<void> _saveCategories() async {
-    final jsonCategories = _categories.map((category) {
-      return jsonEncode(category.toJson());
-    }).toList();
-
-    await prefs.setStringList("_categories", jsonCategories);
-  }
-
-  /// Agregar una categoría y guardar cambios
-  Future<void> addCategory(CategoryExpense category) async {
-    _categories.add(category);
-    await _saveCategories();
-    notifyListeners();
-  }
-
-  /// Eliminar una categoría y guardar cambios
-  Future<void> removeCategory(CategoryExpense category) async {
-    _categories.remove(category);
-    await _saveCategories();
-    notifyListeners();
-  }
-
-  /// Eliminar todas las categorías
-  Future<void> clearCategories() async {
-    _categories.clear();
-    await prefs.remove("_categories");
-    notifyListeners();
   }
 }

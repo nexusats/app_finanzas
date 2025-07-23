@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:app_finanzas/app/controller/category_expense_provider.dart';
 import 'package:app_finanzas/app/model/category_expense.dart';
-import 'package:app_finanzas/app/services/category_service.dart';
 
 class CategoryEditScreen extends StatefulWidget {
   final CategoryExpense? category;
@@ -14,7 +15,6 @@ class CategoryEditScreen extends StatefulWidget {
 class _CategoryEditScreenState extends State<CategoryEditScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
-  final CategoryService _categoryService = CategoryService();
 
   @override
   void initState() {
@@ -32,19 +32,20 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> {
 
   Future<void> _saveCategory() async {
     if (_formKey.currentState!.validate()) {
-      final data = {
-        "name": _nameController.text.trim(),
-      };
+      final provider = Provider.of<CategoryExpenseProvider>(context, listen: false);
+      final name = _nameController.text.trim();
+      bool success = false;
 
-      bool success;
       if (widget.category == null) {
-        success = await _categoryService.createCategory(data);
+        // Crear
+        success = await provider.createCategory({"name": name});
       } else {
-        success = await _categoryService.updateCategory(widget.category!.id!, data);
+        // Actualizar
+        success = await provider.updateCategory(widget.category!.id!, {"name": name});
       }
 
       if (success) {
-        Navigator.pop(context, true);
+        Navigator.pop(context); // Sin necesidad de pasar `true`
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Categoría guardada correctamente')),
         );
