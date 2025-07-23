@@ -1,3 +1,6 @@
+import 'package:app_finanzas/app/controller/goals_provider.dart';
+import 'package:app_finanzas/app/model/goal.dart';
+import 'package:app_finanzas/app/model/transaction.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -97,8 +100,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHomeScreen() {
-    return Consumer<TransactionsProvider>(
-      builder: (context, provider, _) {
+    return Consumer2<TransactionsProvider, GoalsProvider>(
+      builder: (context, txProvider, gsProvider, _) {
+        final isLoading = txProvider.isLoading || gsProvider.isLoading;
+        final goals = gsProvider.goals;
         return Container(
           decoration: const BoxDecoration(
             color: Colors.white,
@@ -119,46 +124,106 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 20),
+
+              // 🔁 Scroll vertical con todo dentro
               Expanded(
-                child: GridView.count(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 0.9,
-                  children: provider.isLoading
-                      ? List.generate(5, (_) => buildFinanceCardSkeleton())
-                      : [
-                          _buildFinanceCard(
-                            "Libertad Financiera",
-                            provider.getTotalDebt(),
-                            Icons.lock_open_rounded,
-                            Colors.deepOrangeAccent,
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Grid de balance
+                      GridView.count(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: 1.3,
+                        physics:
+                            const NeverScrollableScrollPhysics(),
+                        shrinkWrap: true,
+                        children: txProvider.isLoading
+                            ? List.generate(
+                                5, (_) => buildFinanceCardSkeleton())
+                            : [
+                                _buildFinanceCard(
+                                  "Libertad Financiera",
+                                  txProvider.getTotalDebt(),
+                                  Icons.lock_open_rounded,
+                                  Colors.deepOrangeAccent,
+                                ),
+                                _buildFinanceCard(
+                                  "Gastos Conscientes",
+                                  txProvider.getTotalExpenses(),
+                                  Icons.account_balance_wallet_outlined,
+                                  Colors.orangeAccent,
+                                ),
+                                _buildFinanceCard(
+                                  "Prosperidad",
+                                  txProvider.getTotalIncomes(),
+                                  Icons.trending_up_rounded,
+                                  Colors.teal,
+                                ),
+                                _buildFinanceCard(
+                                  "Capital Semilla",
+                                  txProvider.getTotalSavings(),
+                                  Icons.savings_rounded,
+                                  Colors.indigoAccent,
+                                ),
+                                _buildFinanceCard(
+                                  "Balance",
+                                  txProvider.getBalance(),
+                                  Icons.auto_graph_rounded,
+                                  Colors.deepPurpleAccent,
+                                ),
+                              ],
+                      ),
+
+                      // Seccion de metas
+                      if (!isLoading && goals.isNotEmpty) ...[
+                        const SizedBox(height: 24),
+                        const Text("Estado de los objetivos"),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          height: 120,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: goals.length,
+                            separatorBuilder: (_, __) => const SizedBox(width: 12),
+                            itemBuilder: (context, index) {
+                              final goal = goals[index];
+                              return _buildGoalsCard(goal);
+                            },
                           ),
-                          _buildFinanceCard(
-                            "Gastos Conscientes",
-                            provider.getTotalExpenses(),
-                            Icons.account_balance_wallet_outlined,
-                            Colors.orangeAccent,
+                        ),
+                      ],
+
+                      // Sección de deudas
+                      if (!txProvider.isLoading &&
+                          txProvider.getTransactionsByType(TransactionType.E).isNotEmpty) ...[
+                        const SizedBox(height: 24),
+                        const Text(
+                          "Estado de las deudas",
+                          style: TextStyle(
+                            fontSize: ConfigGlobal.sizeSmallSubTitle,
+                            fontWeight: FontWeight.bold,
                           ),
-                          _buildFinanceCard(
-                            "Prosperidad",
-                            provider.getTotalIncomes(),
-                            Icons.trending_up_rounded,
-                            Colors.teal,
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          height: 120,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: txProvider.getTransactionsByType(TransactionType.E).length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(width: 12),
+                            itemBuilder: (context, index) {
+                              final debt = txProvider.getTransactionsByType(TransactionType.E)[index];
+                              return _buildDebtCard(debt);
+                            },
                           ),
-                          _buildFinanceCard(
-                            "Capital Semilla",
-                            provider.getTotalSavings(),
-                            Icons.savings_rounded,
-                            Colors.indigoAccent,
-                          ),
-                          _buildFinanceCard(
-                            "Balance",
-                            provider.getBalance(),
-                            Icons.auto_graph_rounded,
-                            Colors.deepPurpleAccent,
-                          ),
-                        ],
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -168,52 +233,158 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildFinanceCard(
-      String title, double amount, IconData icon, Color color) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      // ignore: deprecated_member_use
-      shadowColor: color.withOpacity(0.2),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                // ignore: deprecated_member_use
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+  Widget _buildGoalsCard(Goal goal) {
+    return Container(
+      width: 200,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.blueGrey.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.blueGrey.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.flag, color: Colors.green),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  goal.name ?? "Sin nombre",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
               ),
-              child: Icon(icon, size: 24, color: color),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            formatCurrency(goal.amount),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[800],
             ),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              formatCurrency(amount),
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            // ignore: unnecessary_null_comparison
+            goal.date != null
+                ? "Fecha: ${goal.date.toLocal().toIso8601String().split('T')[0]}"
+                : "Fecha no disponible",
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+        ],
       ),
     );
   }
+
+  Widget _buildDebtCard(Transaction transaction) {
+    return Container(
+      width: 200,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        // ignore: deprecated_member_use
+        color: Colors.deepOrangeAccent.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
+        // ignore: deprecated_member_use
+        border: Border.all(color: Colors.deepOrangeAccent.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded,
+                  color: Colors.deepOrangeAccent),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  transaction.description ?? "Sin descripción",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            formatCurrency(transaction.amount),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.deepOrangeAccent,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            // ignore: unnecessary_null_comparison
+            transaction.date != null
+                ? "Fecha: ${transaction.date.toLocal().toIso8601String().split('T')[0]}"
+                : "Fecha no disponible",
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFinanceCard(
+    String title, double amount, IconData icon, Color color) {
+  return Container(
+    decoration: BoxDecoration(
+      color: Colors.grey[50],
+      borderRadius: BorderRadius.circular(16),
+      boxShadow: [
+        BoxShadow(
+        // ignore: deprecated_member_use
+          color: color.withOpacity(0.1),
+          blurRadius: 10,
+          offset: const Offset(0, 4),
+        ),
+      ],
+    ),
+    padding: const EdgeInsets.all(12),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+        // ignore: deprecated_member_use
+            color: color.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 20, color: color),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          formatCurrency(amount),
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
   Widget buildFinanceCardSkeleton() {
     return Card(
