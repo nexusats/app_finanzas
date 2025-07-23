@@ -32,7 +32,7 @@ class TransactionsProvider extends ChangeNotifier {
       .where((t) => (t.type == TransactionType.E && t.statusId != 8))
       .fold(0.0, (sum, t) => sum + t.amount);
 
-    double getTotalDebt() => _transactions
+  double getTotalDebt() => _transactions
       .where((t) => (t.type == TransactionType.E && t.statusId == 8))
       .fold(0.0, (sum, t) => sum + t.amount);
 
@@ -44,6 +44,12 @@ class TransactionsProvider extends ChangeNotifier {
 
   Future<void> fetchTransactions() async {
     await _loadTransactions();
+  }
+
+  List<Transaction> getTransactionsByType(TransactionType type, {int statusId = 8}) {
+    return _transactions.where((transaction) {
+      return transaction.type == type && transaction.statusId == statusId;
+    }).toList();
   }
 
   Future<void> _loadTransactions() async {
