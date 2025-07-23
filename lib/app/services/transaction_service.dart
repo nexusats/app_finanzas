@@ -20,7 +20,6 @@ class TransactionService {
     };
   }
 
-  // Crear transacción
   Future<bool> createTransaction(Map<String, dynamic> transactionData) async {
     final url = Uri.parse('$baseUrl/$module');
     final headers = await _getHeaders();
@@ -33,7 +32,6 @@ class TransactionService {
     return response.statusCode == 201;
   }
 
-  // Obtener todas las transacciones
   Future<List<dynamic>> getTransactions() async {
     final url = Uri.parse('$baseUrl/$module');
     final headers = await _getHeaders();
@@ -47,7 +45,6 @@ class TransactionService {
     }
   }
 
-  // Obtener una transacción por ID
   Future<Map<String, dynamic>?> getTransactionById(int id) async {
     final url = Uri.parse('$baseUrl/$module/$id');
     final headers = await _getHeaders();
@@ -61,7 +58,6 @@ class TransactionService {
     }
   }
 
-  // Actualizar transacción
   Future<bool> updateTransaction(
       int id, Map<String, dynamic> transactionData) async {
     final url = Uri.parse('$baseUrl/$module/$id');
@@ -75,7 +71,6 @@ class TransactionService {
     return response.statusCode == 200;
   }
 
-  // Eliminar transacción
   Future<bool> deleteTransaction(int id) async {
     final url = Uri.parse('$baseUrl/$module/$id');
     final headers = await _getHeaders();

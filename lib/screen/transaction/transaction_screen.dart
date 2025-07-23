@@ -9,6 +9,7 @@ import 'package:app_finanzas/app/model/transaction.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:app_finanzas/app/services/get_selects_service.dart';
 import 'package:app_finanzas/app/controller/transactions_provider.dart';
+import 'package:app_finanzas/app/extensions/transaction_type_extension.dart';
 import 'package:app_finanzas/screen/transaction/transaction_detail_screen.dart';
 
 class TransactionScreen extends StatefulWidget {
@@ -588,40 +589,5 @@ class TransactionFormModalState extends State<TransactionFormModal> {
 
     context.read<TransactionsProvider>().addTransaction(context, transaction);
     Navigator.pop(context);
-  }
-}
-
-extension TransactionTypeExtension on TransactionType {
-  String get displayName {
-    switch (this) {
-      case TransactionType.I:
-        return 'Ingreso';
-      case TransactionType.E:
-        return 'Gasto';
-      case TransactionType.A:
-        return 'Ahorro';
-    }
-  }
-
-  IconData get icon {
-    switch (this) {
-      case TransactionType.I:
-        return Icons.trending_up;
-      case TransactionType.E:
-        return Icons.trending_down;
-      case TransactionType.A:
-        return Icons.savings;
-    }
-  }
-
-  Color get color {
-    switch (this) {
-      case TransactionType.I:
-        return Colors.green;
-      case TransactionType.E:
-        return Colors.red;
-      case TransactionType.A:
-        return Colors.blue;
-    }
   }
 }

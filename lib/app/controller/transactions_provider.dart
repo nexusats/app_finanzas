@@ -10,11 +10,11 @@ class TransactionsProvider extends ChangeNotifier {
   SharedPreferences? _prefs;
   final TransactionService _transactionService = TransactionService();
   Transaction? _selectedTransaction;
-  bool _isLoading = true; // Estado de carga
+  bool _isLoading = true;
 
   Transaction? get selectedTransaction => _selectedTransaction;
   List<Transaction> get transactions => List.unmodifiable(_transactions);
-  bool get isLoading => _isLoading; // Getter para el estado de carga
+  bool get isLoading => _isLoading;
 
   TransactionsProvider() {
     _loadTransactions();
@@ -42,14 +42,14 @@ class TransactionsProvider extends ChangeNotifier {
       .where((t) => t.type == type)
       .fold(0.0, (sum, t) => sum + t.amount);
 
-  Future<void> fetchTransactions() async {
-    await _loadTransactions();
-  }
-
   List<Transaction> getTransactionsByType(TransactionType type, {int statusId = 8}) {
     return _transactions.where((transaction) {
       return transaction.type == type && transaction.statusId == statusId;
     }).toList();
+  }
+
+  Future<void> fetchTransactions() async {
+    await _loadTransactions();
   }
 
   Future<void> _loadTransactions() async {
@@ -112,7 +112,6 @@ class TransactionsProvider extends ChangeNotifier {
         await _saveTransactions();
         notifyListeners();
 
-        // Verifica si el widget está montado antes de mostrar el Snackbar
         if (context.mounted) {
           CustomSnackbar.show(context, "Transacción agregada exitosamente");
         }
@@ -126,6 +125,38 @@ class TransactionsProvider extends ChangeNotifier {
       if (context.mounted) {
         CustomSnackbar.show(context, "Error de conexión: $error",
             isError: true);
+      }
+    }
+  }
+
+  Future<void> updateTransaction(
+      BuildContext context, Transaction updatedTransaction) async {
+    try {
+      final success = await _transactionService.updateTransaction(
+        updatedTransaction.id!,
+        updatedTransaction.toJson(),
+      );
+
+      if (success) {
+        final index = _transactions.indexWhere((t) => t.id == updatedTransaction.id);
+        if (index != -1) {
+          _transactions[index] = updatedTransaction;
+          _selectedTransaction = updatedTransaction;
+          await _saveTransactions();
+          notifyListeners();
+
+          if (context.mounted) {
+            CustomSnackbar.show(context, "Transacción actualizada");
+          }
+        }
+      } else {
+        if (context.mounted) {
+          CustomSnackbar.show(context, "Error al actualizar", isError: true);
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        CustomSnackbar.show(context, "Error: $e", isError: true);
       }
     }
   }
