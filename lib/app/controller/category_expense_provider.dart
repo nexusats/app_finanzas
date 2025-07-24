@@ -20,7 +20,7 @@ class CategoryExpenseProvider with ChangeNotifier {
 
   Future<void> _initProvider() async {
     await _loadCategoriesFromLocal();
-    fetchFromApiAndUpdateLocal(); // ⚡ Refresca desde API sin bloquear UI
+    fetchFromApiAndUpdateLocal();
   }
 
   Future<void> _loadCategoriesFromLocal() async {
@@ -28,9 +28,14 @@ class CategoryExpenseProvider with ChangeNotifier {
     final data = prefs.getString(_storageKey);
 
     if (data != null) {
-      _categories = (jsonDecode(data) as List)
-          .map((e) => CategoryExpense.fromJson(e))
-          .toList();
+      try {
+        final decoded = jsonDecode(data);
+        _categories = (decoded as List)
+            .map((e) => CategoryExpense.fromJson(e))
+            .toList();
+      } catch (_) {
+        _categories = [];
+      }
     } else {
       _categories = [];
     }
@@ -39,16 +44,32 @@ class CategoryExpenseProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> reloadCategoriesFromLocalStorage() async {
-    _isLoading = true;
-    notifyListeners();
-    await _loadCategoriesFromLocal();
-  }
-
   Future<void> _saveCategoriesToLocal() async {
     final prefs = await SharedPreferences.getInstance();
     final encoded = jsonEncode(_categories.map((e) => e.toJson()).toList());
     await prefs.setString(_storageKey, encoded);
+  }
+
+  Future<void> fetchFromApiAndUpdateLocal() async {
+    try {
+      final response = await _categoryService.getCategories();
+
+      if (response.isNotEmpty) {
+        _categories = response.map((e) => CategoryExpense.fromJson(e)).toList();
+        await _saveCategoriesToLocal();
+        notifyListeners();
+      } else {
+        debugPrint("Advertencia: API retornó lista vacía");
+      }
+    } catch (e) {
+      debugPrint("Error al cargar categorías desde API: $e. Usando caché...");
+    }
+  }
+
+  Future<void> reloadCategoriesFromLocalStorage() async {
+    _isLoading = true;
+    notifyListeners();
+    await _loadCategoriesFromLocal();
   }
 
   Future<bool> createCategory(Map<String, dynamic> categoryData) async {
@@ -67,13 +88,6 @@ class CategoryExpenseProvider with ChangeNotifier {
     return success;
   }
 
-  Future<void> fetchFromApiAndUpdateLocal() async {
-    final response = await _categoryService.getCategories();
-    _categories = response.map((e) => CategoryExpense.fromJson(e)).toList();
-    await _saveCategoriesToLocal();
-    notifyListeners();
-  }
-
   Future<void> removeCategory(CategoryExpense category) async {
     final success = await _categoryService.deleteCategory(category.id!);
     if (success) {
@@ -81,5 +95,11 @@ class CategoryExpenseProvider with ChangeNotifier {
       await _saveCategoriesToLocal();
       notifyListeners();
     }
+  }
+
+  void clear() {
+    _categories = [];
+    _isLoading = true;
+    notifyListeners();
   }
 }
