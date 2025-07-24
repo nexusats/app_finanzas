@@ -13,14 +13,13 @@ class GoalService {
   }
 
   Future<Map<String, String>> _getHeaders() async {
-    String? token = await _getToken();
+    final token = await _getToken();
     return {
       'Content-Type': 'application/json',
-      'Authorization': token != null ? 'Bearer $token' : '',
+      if (token != null) 'Authorization': 'Bearer $token',
     };
   }
 
-  // Crear meta
   Future<bool> createGoal(Map<String, dynamic> goalData) async {
     final url = Uri.parse('$baseUrl/$module');
     final headers = await _getHeaders();
@@ -29,11 +28,9 @@ class GoalService {
       headers: headers,
       body: jsonEncode(goalData),
     );
-
     return response.statusCode == 201;
   }
 
-  // Obtener todas las metas
   Future<List<dynamic>> getGoals() async {
     final url = Uri.parse('$baseUrl/$module');
     final headers = await _getHeaders();
@@ -41,18 +38,20 @@ class GoalService {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      return data['data'];
+
+      final pagination = data['data'];
+      final List<dynamic> goalsList = pagination['data'];
+
+      return goalsList;
     } else {
       return [];
     }
   }
 
-  // Obtener una meta por ID
   Future<Map<String, dynamic>?> getGoalById(int id) async {
     final url = Uri.parse('$baseUrl/$module/$id');
     final headers = await _getHeaders();
     final response = await http.get(url, headers: headers);
-
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       return data;
@@ -61,9 +60,7 @@ class GoalService {
     }
   }
 
-  // Actualizar meta
-  Future<bool> updateGoal(
-      int id, Map<String, dynamic> goalData) async {
+  Future<bool> updateGoal(int id, Map<String, dynamic> goalData) async {
     final url = Uri.parse('$baseUrl/$module/$id');
     final headers = await _getHeaders();
     final response = await http.put(
@@ -71,16 +68,13 @@ class GoalService {
       headers: headers,
       body: jsonEncode(goalData),
     );
-
     return response.statusCode == 200;
   }
 
-  // Eliminar meta
   Future<bool> deleteGoal(int id) async {
     final url = Uri.parse('$baseUrl/$module/$id');
     final headers = await _getHeaders();
     final response = await http.delete(url, headers: headers);
-
     return response.statusCode == 200;
   }
 }

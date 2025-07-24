@@ -18,7 +18,7 @@ class Goal {
     return Goal(
       id: json['id'] ?? 0,
       name: json['name'] ?? 'Sin nombre', // Evita posibles errores con valores nulos
-      amount: json['amount'] ?? 0.0, // Evita posibles errores con valores nulos
+      amount: (json['amount'] as num).toDouble(), // Evita posibles errores con valores nulos
       description: json['description'] ?? 'Sin descripción', // Evita posibles errores con valores nulos
       date: DateTime.parse(json['date'] ?? DateTime.now().toString()), // Evita posibles errores con valores nulos
     );

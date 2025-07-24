@@ -13,6 +13,7 @@ class TransactionDetailScreen extends StatefulWidget {
   const TransactionDetailScreen({super.key, required this.transactionId});
 
   @override
+  // ignore: library_private_types_in_public_api
   _TransactionDetailScreenState createState() =>
       _TransactionDetailScreenState();
 }
@@ -200,12 +201,14 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
       ),
       body: Consumer<TransactionsProvider>(
         builder: (context, provider, _) {
-          if (_isLoading)
+          if (_isLoading) {
             return const Center(child: CircularProgressIndicator());
+          }
 
           final tx = provider.selectedTransaction;
-          if (tx == null)
+          if (tx == null) {
             return const Center(child: Text("No se encontró la transacción"));
+          }
 
           return Padding(
             padding: const EdgeInsets.all(20),
