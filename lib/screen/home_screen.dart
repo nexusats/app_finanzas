@@ -104,6 +104,7 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context, txProvider, gsProvider, _) {
         final isLoading = txProvider.isLoading || gsProvider.isLoading;
         final goals = gsProvider.goals;
+
         return Container(
           decoration: const BoxDecoration(
             color: Colors.white,
@@ -125,69 +126,94 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 20),
 
-              // 🔁 Scroll vertical con todo dentro
+              // Scroll vertical con todo dentro
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Grid de balance
-                      GridView.count(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                        childAspectRatio: 1.3,
-                        physics:
-                            const NeverScrollableScrollPhysics(),
-                        shrinkWrap: true,
-                        children: txProvider.isLoading
-                            ? List.generate(
-                                5, (_) => buildFinanceCardSkeleton())
-                            : [
-                                _buildFinanceCard(
-                                  "Libertad Financiera",
-                                  txProvider.getTotalDebt(),
-                                  Icons.lock_open_rounded,
-                                  Colors.deepOrangeAccent,
-                                ),
-                                _buildFinanceCard(
-                                  "Gastos Conscientes",
-                                  txProvider.getTotalExpenses(),
-                                  Icons.account_balance_wallet_outlined,
-                                  Colors.orangeAccent,
-                                ),
-                                _buildFinanceCard(
-                                  "Prosperidad",
-                                  txProvider.getTotalIncomes(),
-                                  Icons.trending_up_rounded,
-                                  Colors.teal,
-                                ),
-                                _buildFinanceCard(
-                                  "Capital Semilla",
-                                  txProvider.getTotalSavings(),
-                                  Icons.savings_rounded,
-                                  Colors.indigoAccent,
-                                ),
-                                _buildFinanceCard(
-                                  "Balance",
-                                  txProvider.getBalance(),
-                                  Icons.auto_graph_rounded,
-                                  Colors.deepPurpleAccent,
-                                ),
-                              ],
-                      ),
+                      // Tarjetas de balance una debajo de otra
+                      // 🔁 Scroll horizontal para las tarjetas de balance
+                      if (txProvider.isLoading)
+                        SizedBox(
+                          height: 150, // Ajusta el alto según tu diseño
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: 5,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(width: 12),
+                            itemBuilder: (_, __) => buildFinanceCardSkeleton(),
+                          ),
+                        )
+                      else
+                        SizedBox(
+                          height: 80,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: 5,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(width: 12),
+                            itemBuilder: (context, index) {
+                              final items = [
+                                {
+                                  "title": "Libertad Financiera",
+                                  "amount": txProvider.getTotalDebt(),
+                                  "icon": Icons.lock_open_rounded,
+                                  "color": Colors.deepOrangeAccent,
+                                },
+                                {
+                                  "title": "Gastos Conscientes",
+                                  "amount": txProvider.getTotalExpenses(),
+                                  "icon": Icons.account_balance_wallet_outlined,
+                                  "color": Colors.orangeAccent,
+                                },
+                                {
+                                  "title": "Prosperidad",
+                                  "amount": txProvider.getTotalIncomes(),
+                                  "icon": Icons.trending_up_rounded,
+                                  "color": Colors.teal,
+                                },
+                                {
+                                  "title": "Capital Semilla",
+                                  "amount": txProvider.getTotalSavings(),
+                                  "icon": Icons.savings_rounded,
+                                  "color": Colors.indigoAccent,
+                                },
+                                {
+                                  "title": "Balance",
+                                  "amount": txProvider.getBalance(),
+                                  "icon": Icons.auto_graph_rounded,
+                                  "color": Colors.deepPurpleAccent,
+                                },
+                              ];
 
-                      // Seccion de metas
+                              final item = items[index];
+                              return _buildFinanceCard(
+                                item["title"] as String,
+                                item["amount"] as double,
+                                item["icon"] as IconData,
+                                item["color"] as Color,
+                              );
+                            },
+                          ),
+                        ),
+                      // Sección de metas
                       if (!isLoading && goals.isNotEmpty) ...[
                         const SizedBox(height: 24),
-                        const Text("Estado de los objetivos"),
+                        const Text(
+                          "Estado de los objetivos",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         const SizedBox(height: 12),
                         SizedBox(
                           height: 120,
                           child: ListView.separated(
                             scrollDirection: Axis.horizontal,
                             itemCount: goals.length,
-                            separatorBuilder: (_, __) => const SizedBox(width: 12),
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(width: 12),
                             itemBuilder: (context, index) {
                               final goal = goals[index];
                               return _buildGoalsCard(goal);
@@ -198,12 +224,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       // Sección de deudas
                       if (!txProvider.isLoading &&
-                          txProvider.getTransactionsByType(TransactionType.E).isNotEmpty) ...[
+                          txProvider
+                              .getTransactionsByType(TransactionType.E)
+                              .isNotEmpty) ...[
                         const SizedBox(height: 24),
                         const Text(
                           "Estado de las deudas",
                           style: TextStyle(
-                            fontSize: ConfigGlobal.sizeSmallSubTitle,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -212,11 +239,14 @@ class _HomeScreenState extends State<HomeScreen> {
                           height: 120,
                           child: ListView.separated(
                             scrollDirection: Axis.horizontal,
-                            itemCount: txProvider.getTransactionsByType(TransactionType.E).length,
+                            itemCount: txProvider
+                                .getTransactionsByType(TransactionType.E)
+                                .length,
                             separatorBuilder: (_, __) =>
                                 const SizedBox(width: 12),
                             itemBuilder: (context, index) {
-                              final debt = txProvider.getTransactionsByType(TransactionType.E)[index];
+                              final debt = txProvider.getTransactionsByType(
+                                  TransactionType.E)[index];
                               return _buildDebtCard(debt);
                             },
                           ),
@@ -332,6 +362,15 @@ class _HomeScreenState extends State<HomeScreen> {
               color: Colors.deepOrangeAccent,
             ),
           ),
+          Text(
+            formatCurrency(transaction.totalDebt ?? 0),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              // ignore: deprecated_member_use
+              color: Colors.green.withOpacity(0.8),
+            ),
+          ),
           const SizedBox(height: 4),
           Text(
             // ignore: unnecessary_null_comparison
@@ -346,56 +385,46 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildFinanceCard(
-    String title, double amount, IconData icon, Color color) {
-  return Container(
-    decoration: BoxDecoration(
-      color: Colors.grey[50],
-      borderRadius: BorderRadius.circular(16),
-      boxShadow: [
-        BoxShadow(
+      String title, double amount, IconData icon, Color color) {
+    return Container(
+      width: 200,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
         // ignore: deprecated_member_use
-          color: color.withOpacity(0.1),
-          blurRadius: 10,
-          offset: const Offset(0, 4),
-        ),
-      ],
-    ),
-    padding: const EdgeInsets.all(12),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(16),
         // ignore: deprecated_member_use
-            color: color.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
           ),
-          child: Icon(icon, size: 20, color: color),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
+          Text(
+            formatCurrency(amount),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
           ),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          formatCurrency(amount),
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
   Widget buildFinanceCardSkeleton() {
     return Card(

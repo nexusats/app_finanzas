@@ -3,6 +3,7 @@ class Transaction {
   final int? createdBy;
   final TransactionType type;
   final double amount;
+  final double? totalDebt;
   final DateTime date;
   final String? description;
   final String? source;
@@ -17,6 +18,7 @@ class Transaction {
       this.createdBy,
       required this.type,
       required this.amount,
+      this.totalDebt,
       required this.date,
       this.description,
       this.source,
@@ -33,6 +35,7 @@ class Transaction {
       type: TransactionTypeExtension.fromString(
           json['type']), // Mejora la conversión
       amount: (json['amount'] as num).toDouble(), // Asegura que sea double
+      totalDebt: (json['total_debt'] as num).toDouble(), // Asegura que sea double
       date:
           json['date'] != null ? DateTime.parse(json['date']) : DateTime.now(),
       description:
@@ -51,6 +54,7 @@ class Transaction {
       'created_by': createdBy,
       'type': type.toShortString(),
       'amount': amount,
+      'total_debt': totalDebt,
       'date': date.toIso8601String(),
       'description': description,
       'source': source,
