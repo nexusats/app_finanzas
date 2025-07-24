@@ -271,6 +271,14 @@ class _HomeScreenState extends State<HomeScreen> {
               color: Colors.grey[800],
             ),
           ),
+          Text(
+            formatCurrency(goal.totalTransactions),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Colors.redAccent.withOpacity(0.8),
+            ),
+          ),
           const SizedBox(height: 4),
           Text(
             // ignore: unnecessary_null_comparison

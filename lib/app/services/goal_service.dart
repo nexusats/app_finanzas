@@ -35,14 +35,10 @@ class GoalService {
     final url = Uri.parse('$baseUrl/$module');
     final headers = await _getHeaders();
     final response = await http.get(url, headers: headers);
-
+    
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-
-      final pagination = data['data'];
-      final List<dynamic> goalsList = pagination['data'];
-
-      return goalsList;
+      return data['data'];
     } else {
       return [];
     }

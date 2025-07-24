@@ -30,11 +30,11 @@ class GoalsProvider extends ChangeNotifier {
     _prefs ??= await SharedPreferences.getInstance();
 
     try {
-      final fetchedGoals = await _goalService.getGoals();
+      final rawGoals = await _goalService.getGoals();
 
       _goals
         ..clear()
-        ..addAll(fetchedGoals.map((e) => Goal.fromJson(e)));
+        ..addAll(rawGoals.map((e) => Goal.fromJson(e)));
       await _saveGoals();
     } catch (e) {
       final cachedGoals = _prefs?.getStringList("_goals");

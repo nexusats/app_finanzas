@@ -3,6 +3,7 @@ class Goal {
   final int id;
   final String name;
   final double amount;
+  final double totalTransactions;
   final String description;
   final DateTime date;
 
@@ -10,6 +11,7 @@ class Goal {
     required this.id,
     required this.name,
     required this.amount,
+    required this.totalTransactions,
     required this.description,
     required this.date,
   });
@@ -19,6 +21,7 @@ class Goal {
       id: json['id'] ?? 0,
       name: json['name'] ?? 'Sin nombre', // Evita posibles errores con valores nulos
       amount: (json['amount'] as num).toDouble(), // Evita posibles errores con valores nulos
+      totalTransactions: (json['total_with_transactions'] as num).toDouble(), // Evita posibles errores con valores nulos
       description: json['description'] ?? 'Sin descripción', // Evita posibles errores con valores nulos
       date: DateTime.parse(json['date'] ?? DateTime.now().toString()), // Evita posibles errores con valores nulos
     );
@@ -29,6 +32,7 @@ class Goal {
       'id': id,
       'name': name,
       'amount': amount,
+      'totalTransactions': totalTransactions,
       'description': description,
       'date': date.toIso8601String(),
     };
