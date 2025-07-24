@@ -2,7 +2,7 @@
     <!-- Agregar permiso de Internet -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="app_finanzas"
+        android:label="Finanzas Atsu"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher">
