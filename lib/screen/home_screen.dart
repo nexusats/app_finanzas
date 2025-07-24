@@ -276,7 +276,8 @@ class _HomeScreenState extends State<HomeScreen> {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
-              color: Colors.redAccent.withOpacity(0.8),
+              // ignore: deprecated_member_use
+              color: Colors.green.withOpacity(0.8),
             ),
           ),
           const SizedBox(height: 4),
