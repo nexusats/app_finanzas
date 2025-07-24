@@ -57,6 +57,9 @@ class AuthProvider extends ChangeNotifier {
     _token = null;
     await _prefs?.remove("_user");
     await _prefs?.remove("_token");
+    // Elimina datos almacenadas si es necesario
+    await _prefs?.remove("_transactions");
+    await _prefs?.remove("_goals");
     notifyListeners();
   }
 
