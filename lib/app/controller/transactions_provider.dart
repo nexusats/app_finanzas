@@ -42,9 +42,9 @@ class TransactionsProvider extends ChangeNotifier {
       .where((t) => t.type == type)
       .fold(0.0, (sum, t) => sum + t.amount);
 
-  List<Transaction> getTransactionsByType(TransactionType type, {int statusId = 8}) {
+  List<Transaction> getTransactionsByType(TransactionType type, {List<int> statusIds = const [8, 9]}) {
     return _transactions.where((transaction) {
-      return transaction.type == type && transaction.statusId == statusId;
+      return transaction.type == type && statusIds.contains(transaction.statusId);
     }).toList();
   }
 
