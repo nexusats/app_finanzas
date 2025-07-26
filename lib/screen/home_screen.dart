@@ -136,10 +136,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       // 🔁 Scroll horizontal para las tarjetas de balance
                       if (txProvider.isLoading)
                         SizedBox(
-                          height: 150, // Ajusta el alto según tu diseño
+                          height: 150,
                           child: ListView.separated(
                             scrollDirection: Axis.horizontal,
-                            itemCount: 5,
+                            itemCount: 3,
                             separatorBuilder: (_, __) =>
                                 const SizedBox(width: 12),
                             itemBuilder: (_, __) => buildFinanceCardSkeleton(),
@@ -198,7 +198,19 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                       // Sección de metas
-                      if (!isLoading && goals.isNotEmpty) ...[
+                      if (isLoading) ...[
+                        const SizedBox(height: 20),
+                        SizedBox(
+                          height: 150,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: 3,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(width: 12),
+                            itemBuilder: (_, __) => buildFinanceCardSkeleton(),
+                          ),
+                        )]
+                      else if (goals.isNotEmpty) ...[
                         const SizedBox(height: 24),
                         const Text(
                           "Estado de los objetivos",
@@ -223,8 +235,19 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
 
                       // Sección de deudas
-                      if (!txProvider.isLoading &&
-                          txProvider
+                      if (isLoading) ...[
+                        const SizedBox(height: 20),
+                        SizedBox(
+                          height: 150,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: 3,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(width: 12),
+                            itemBuilder: (_, __) => buildFinanceCardSkeleton(),
+                          ),
+                        )]
+                      else if (txProvider
                               .getTransactionsByType(TransactionType.E)
                               .isNotEmpty) ...[
                         const SizedBox(height: 24),
