@@ -5,12 +5,14 @@ class LoginField extends StatefulWidget {
   final String hintText;
   final bool isPassword;
   final TextEditingController? controller;
+  final String? Function(String?)? validator;
 
   const LoginField({
     super.key,
     required this.hintText,
     this.isPassword = false,
     this.controller,
+    this.validator,
   });
 
   @override
@@ -60,12 +62,13 @@ class _LoginFieldState extends State<LoginField> {
                 )
               : null,
         ),
-        validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'Este campo es obligatorio';
-          }
-          return null;
-        },
+        validator: widget.validator ??
+            (value) {
+              if (value == null || value.isEmpty) {
+                return 'Este campo es obligatorio';
+              }
+              return null;
+            },
       ),
     );
   }

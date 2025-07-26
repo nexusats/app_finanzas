@@ -34,6 +34,57 @@ class AuthService {
     }
   }
 
+  /// **Register de usuario**
+  Future<Map<String, dynamic>> register(Map<String, dynamic> data) async {
+    final url = Uri.parse('$baseUrl/$module/register');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(data),
+      );
+
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {
+          "success": true,
+          "message": responseData["message"],
+          "user": responseData["user"],
+          "token": responseData["token"],
+        };
+      } else {
+        return {"success": false, "message": responseData["message"] ?? "Error en las credenciales"};
+      }
+    } catch (error) {
+      return {"success": false, "message": "Error de conexión: $error"};
+    }
+  }
+
+  /// **Reset Password del usuario**
+  Future<Map<String, dynamic>> resetPassword(Map<String, dynamic> data) async {
+    final url = Uri.parse('$baseUrl/$module/reset-password');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(data),
+      );
+
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {"success": true, "message": responseData["message"] ?? "Enlace de restablecimiento enviado"};
+      } else {
+        return {"success": false, "message": responseData["message"] ?? "Error al enviar el enlace de restablecimiento"};
+      }
+    } catch (error) {
+      return {"success": false, "message": "Error de conexión: $error"};
+    }
+  }
+
   /// **Logout de usuario**
   Future<Map<String, dynamic>> logout(String token) async {
     final url = Uri.parse('$baseUrl/$module/logout');

@@ -95,6 +95,52 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// **Register del usuario**
+  Future<void> register(BuildContext context, Map<String, dynamic> userData) async {
+    try {
+      final result = await _authService.register(userData);
+
+      if (result["success"] == true) {
+        _currentUser = result["user"] != null ? User.fromJson(result["user"]) : null;
+        _token = result["token"] ?? "";
+
+        if (_token!.isEmpty) {
+          CustomSnackbar.show(context, "⚠️ Advertencia: el token está vacío", isError: true);
+          return;
+        }
+
+        await _saveUser();
+        notifyListeners();
+
+        CustomSnackbar.show(context, "Cuenta creada con exitoso");
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
+      } else {
+        CustomSnackbar.show(context, result["message"] ?? "Error desconocido", isError: true);
+      }
+    } catch (error) {
+      CustomSnackbar.show(context, "Error de conexión: $error", isError: true);
+    }
+  }
+
+  /// **Reset Password del usuario**
+  Future<void> resetPassword(BuildContext context, Map<String, dynamic> userData) async {
+    try {
+      final result = await _authService.resetPassword(userData);
+
+      if (result["success"] == true) {
+        CustomSnackbar.show(context, "Correo enviado para restablecer la contraseña con éxito");
+      } else {
+        CustomSnackbar.show(context, result["message"] ?? "Error desconocido", isError: true);
+      }
+    } catch (error) {
+      CustomSnackbar.show(context, "Error de conexión: $error", isError: true);
+    }
+  }
+
   /// **Logout del usuario**
   Future<void> logout(BuildContext context) async {
     try {
