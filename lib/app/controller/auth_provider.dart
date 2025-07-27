@@ -127,17 +127,20 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// **Reset Password del usuario**
-  Future<void> resetPassword(BuildContext context, Map<String, dynamic> userData) async {
+  Future<bool> resetPassword(BuildContext context, Map<String, dynamic> userData) async {
     try {
       final result = await _authService.resetPassword(userData);
 
       if (result["success"] == true) {
         CustomSnackbar.show(context, "Correo enviado para restablecer la contraseña con éxito");
+        return true;
       } else {
         CustomSnackbar.show(context, result["message"] ?? "Error desconocido", isError: true);
+        return false;
       }
     } catch (error) {
       CustomSnackbar.show(context, "Error de conexión: $error", isError: true);
+      return false;
     }
   }
 

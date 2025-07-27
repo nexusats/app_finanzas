@@ -36,7 +36,7 @@ class AuthService {
 
   /// **Register de usuario**
   Future<Map<String, dynamic>> register(Map<String, dynamic> data) async {
-    final url = Uri.parse('$baseUrl/$module/register');
+    final url = Uri.parse('$baseUrl/register');
 
     try {
       final response = await http.post(
@@ -64,7 +64,7 @@ class AuthService {
 
   /// **Reset Password del usuario**
   Future<Map<String, dynamic>> resetPassword(Map<String, dynamic> data) async {
-    final url = Uri.parse('$baseUrl/$module/reset-password');
+    final url = Uri.parse('$baseUrl/reset-password');
 
     try {
       final response = await http.post(

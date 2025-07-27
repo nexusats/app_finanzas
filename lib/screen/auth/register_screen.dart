@@ -40,7 +40,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         "username": username,
       };
 
-      context.read<AuthProvider>().login(context, userData);
+      context.read<AuthProvider>().register(context, userData);
     }
   }
 

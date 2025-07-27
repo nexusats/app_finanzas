@@ -22,7 +22,7 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
     super.dispose();
   }
 
-  void _submitForm() {
+  void _submitForm() async {
     if (_formKey.currentState?.validate() ?? false) {
       final email = _emailController.text.trim();
 
@@ -30,7 +30,14 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
         "email": email,
       };
 
-      context.read<AuthProvider>().resetPassword(context, userData);
+      final success = await context.read<AuthProvider>().resetPassword(context, userData);
+
+      if (success) {
+        // Espera un poco para que el SnackBar se vea
+        await Future.delayed(const Duration(seconds: 1));
+        if (!mounted) return;
+        Navigator.of(context).pop(); // Vuelve al login
+      }
     }
   }
 
