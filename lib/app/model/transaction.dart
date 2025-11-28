@@ -1,14 +1,14 @@
 class Transaction {
   final int? id;
   final int? createdBy;
-  final String type; // income, expense, saving, debt_in, debt_on
+  final String type;
   final double amount;
   final double? totalDebt;
   final DateTime date;
 
-  final String? note; // reemplaza description
-  final int? categoryId; // para expense
-  final int? goalId; // para saving / debt
+  final String? note;
+  final int? categoryId;
+  final int? goalId;
   final int statusId;
 
   final bool isRecurring;
@@ -35,10 +35,10 @@ class Transaction {
     return Transaction(
       id: json['id'],
       createdBy: json['created_by'],
-      type: json['type'],
-      amount: (json['amount'] as num).toDouble(),
+      type: json['type'] ?? '',
+      amount: double.tryParse(json['amount'].toString()) ?? 0.0,
       totalDebt: json['total_debt'] != null
-          ? (json['total_debt'] as num).toDouble()
+          ? double.tryParse(json['total_debt'].toString())
           : null,
       date:
           json['date'] != null ? DateTime.parse(json['date']) : DateTime.now(),
@@ -46,7 +46,7 @@ class Transaction {
       categoryId: json['category_id'],
       goalId: json['goal_id'],
       statusId: json['status_id'] ?? 1,
-      isRecurring: json['is_recurring'] == true,
+      isRecurring: json['is_recurring'] == 1 || json['is_recurring'] == true,
       recurringIntervalDays: json['recurring_interval_days'],
       files: json['files'] != null ? List<String>.from(json['files']) : [],
     );
@@ -63,7 +63,7 @@ class Transaction {
       "category_id": categoryId,
       "goal_id": goalId,
       "status_id": statusId,
-      "is_recurring": isRecurring,
+      "is_recurring": isRecurring ? 1 : 0,
       "recurring_interval_days": recurringIntervalDays,
     };
   }
