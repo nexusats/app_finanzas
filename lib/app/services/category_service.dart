@@ -29,7 +29,7 @@ class CategoryService {
       headers: headers,
       body: jsonEncode(categoryData),
     );
-
+    print(response.body);
     return response.statusCode == 201;
   }
 

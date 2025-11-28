@@ -18,12 +18,14 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
   void initState() {
     super.initState();
     Future.microtask(() {
-      final provider = Provider.of<CategoryExpenseProvider>(context, listen: false);
+      final provider =
+          Provider.of<CategoryExpenseProvider>(context, listen: false);
       provider.fetchFromApiAndUpdateLocal(); // Carga automática al iniciar
     });
   }
 
-  void _navigateToEditScreen(BuildContext context, CategoryExpense? category) async {
+  void _navigateToEditScreen(
+      BuildContext context, CategoryExpense? category) async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -32,7 +34,8 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
     );
 
     if (result == true) {
-      Provider.of<CategoryExpenseProvider>(context, listen: false).fetchFromApiAndUpdateLocal();
+      Provider.of<CategoryExpenseProvider>(context, listen: false)
+          .fetchFromApiAndUpdateLocal();
     }
   }
 
@@ -70,20 +73,29 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                         itemCount: categories.length,
                         itemBuilder: (context, index) {
                           final category = categories[index];
+
                           return Card(
-                            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            margin: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
                             child: ListTile(
-                              title: Text(category.nameCategory),
+                              title: Text(category.name), // ← AJUSTE NECESARIO
+                              subtitle: category.type != null
+                                  ? Text(category.type!)
+                                  : null,
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   IconButton(
-                                    icon: const Icon(Icons.edit, color: Colors.blue),
-                                    onPressed: () => _navigateToEditScreen(context, category),
+                                    icon: const Icon(Icons.edit,
+                                        color: Colors.blue),
+                                    onPressed: () => _navigateToEditScreen(
+                                        context, category),
                                   ),
                                   IconButton(
-                                    icon: const Icon(Icons.delete, color: Colors.red),
-                                    onPressed: () => provider.removeCategory(category),
+                                    icon: const Icon(Icons.delete,
+                                        color: Colors.red),
+                                    onPressed: () =>
+                                        provider.removeCategory(category),
                                   ),
                                 ],
                               ),
