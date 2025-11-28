@@ -128,8 +128,19 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> {
     }
   }
 
-  IconData _buildIcon(String name) {
-    return Icons.category;
+  final Map<String, IconData> iconMap = {
+    "home": Icons.home,
+    "food": Icons.fastfood,
+    "shopping": Icons.shopping_cart,
+    "car": Icons.directions_car,
+    "money": Icons.attach_money,
+    "star": Icons.star,
+    "category": Icons.category,
+  };
+
+  IconData buildIcon(String? name) {
+    if (name == null) return Icons.category;
+    return iconMap[name] ?? Icons.category;
   }
 
   @override
