@@ -27,17 +27,26 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> {
     "debt": "Deuda",
   };
 
-  final List<String> iconOptions = [
-    "shopping_cart",
-    "account_balance",
-    "savings",
-    "credit_card",
-    "home",
-    "restaurant",
-    "local_gas_station",
-    "school",
-    "health_and_safety",
-  ];
+  /// Íconos unificados
+  final Map<String, IconData> icons = {
+    "shopping_cart": Icons.shopping_cart,
+    "account_balance": Icons.account_balance,
+    "savings": Icons.savings,
+    "credit_card": Icons.credit_card,
+    "home": Icons.home,
+    "restaurant": Icons.restaurant,
+    "local_gas_station": Icons.local_gas_station,
+    "school": Icons.school,
+    "health_and_safety": Icons.health_and_safety,
+
+    // íconos adicionales
+    "food": Icons.fastfood,
+    "shopping": Icons.shopping_cart,
+    "car": Icons.directions_car,
+    "money": Icons.attach_money,
+    "star": Icons.star,
+    "category": Icons.category,
+  };
 
   @override
   void initState() {
@@ -89,27 +98,30 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> {
     }
   }
 
+  /// Picker de íconos
   void _pickIcon() async {
     final icon = await showModalBottomSheet<String>(
       context: context,
       builder: (context) {
+        final iconKeys = icons.keys.toList();
+
         return Container(
           padding: const EdgeInsets.all(16),
           height: 350,
           child: GridView.builder(
-            itemCount: iconOptions.length,
+            itemCount: iconKeys.length,
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 4,
               childAspectRatio: 1,
             ),
             itemBuilder: (_, index) {
-              final iconName = iconOptions[index];
+              final iconName = iconKeys[index];
               return GestureDetector(
                 onTap: () => Navigator.pop(context, iconName),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(_buildIcon(iconName), size: 28),
+                    Icon(icons[iconName], size: 28),
                     const SizedBox(height: 6),
                     Text(iconName, style: const TextStyle(fontSize: 10)),
                   ],
@@ -128,19 +140,10 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> {
     }
   }
 
-  final Map<String, IconData> iconMap = {
-    "home": Icons.home,
-    "food": Icons.fastfood,
-    "shopping": Icons.shopping_cart,
-    "car": Icons.directions_car,
-    "money": Icons.attach_money,
-    "star": Icons.star,
-    "category": Icons.category,
-  };
-
-  IconData buildIcon(String? name) {
-    if (name == null) return Icons.category;
-    return iconMap[name] ?? Icons.category;
+  /// Renderizado seguro del ícono
+  IconData _buildIcon(String? name) {
+    if (name == null || name.isEmpty) return Icons.category;
+    return icons[name] ?? Icons.category;
   }
 
   @override
@@ -198,9 +201,7 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> {
                 readOnly: true,
                 decoration: InputDecoration(
                   labelText: 'Icono',
-                  prefixIcon: Icon(
-                    _buildIcon(_iconController.text),
-                  ),
+                  prefixIcon: Icon(_buildIcon(_iconController.text)),
                   border: const OutlineInputBorder(),
                   suffixIcon: IconButton(
                     icon: const Icon(Icons.search),
