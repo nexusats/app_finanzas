@@ -30,9 +30,8 @@ class CategoryExpenseProvider with ChangeNotifier {
     if (data != null) {
       try {
         final decoded = jsonDecode(data);
-        _categories = (decoded as List)
-            .map((e) => CategoryExpense.fromJson(e))
-            .toList();
+        _categories =
+            (decoded as List).map((e) => CategoryExpense.fromJson(e)).toList();
       } catch (_) {
         _categories = [];
       }

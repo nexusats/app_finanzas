@@ -29,7 +29,6 @@ class CategoryService {
       headers: headers,
       body: jsonEncode(categoryData),
     );
-    print(response.body);
     return response.statusCode == 201;
   }
 
@@ -70,7 +69,7 @@ class CategoryService {
       body: jsonEncode(categoryData),
     );
 
-    return response.statusCode == 201;
+    return response.statusCode == 201 || response.statusCode == 200;
   }
 
   Future<bool> deleteCategory(int id) async {
