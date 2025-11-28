@@ -176,10 +176,36 @@ class TransactionScreenState extends State<TransactionScreen> {
           ],
         ),
         trailing: IconButton(
-          icon: const Icon(Icons.arrow_forward_ios, size: 16),
-          onPressed: () => _navigateToDetail(transaction.id!),
+          icon: Icon(Icons.edit),
+          onPressed: () => _openEditModal(transaction),
         ),
+        // trailing: IconButton(
+        //   icon: const Icon(Icons.arrow_forward_ios, size: 16),
+        //   onPressed: () => _navigateToDetail(transaction.id!),
+        // ),
       ),
+    );
+  }
+
+  void _openEditModal(Transaction t) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: ConfigGlobal.backgroundSecondColor,
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.85,
+          minChildSize: 0.4,
+          maxChildSize: 0.95,
+          builder: (_, scrollController) {
+            return SingleChildScrollView(
+              controller: scrollController,
+              child: TransactionFormModal(transaction: t),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -288,7 +314,9 @@ class TransactionScreenState extends State<TransactionScreen> {
 /* -------------------------------------------------------------------------- */
 
 class TransactionFormModal extends StatefulWidget {
-  const TransactionFormModal({super.key});
+  final Transaction? transaction;
+
+  const TransactionFormModal({super.key, this.transaction});
 
   @override
   TransactionFormModalState createState() => TransactionFormModalState();
@@ -324,6 +352,21 @@ class TransactionFormModalState extends State<TransactionFormModal> {
   @override
   void initState() {
     super.initState();
+
+    final t = widget.transaction;
+
+    if (t != null) {
+      _selectedType = t.type;
+      _selectedDate = t.date;
+      _amountController.text = t.amount.toString();
+      _noteController.text = t.note ?? '';
+      _selectedStatus = t.statusId.toString();
+      _selectedCategory = t.categoryId?.toString();
+      _selectedGoal = t.goalId?.toString();
+      _isRecurring = t.isRecurring;
+      _recurringDaysController.text = t.recurringIntervalDays?.toString() ?? '';
+    }
+
     _statusesFuture = _loadStatuses();
     _categoriesFuture = _loadCategories();
     _goalsFuture = _loadGoals();
@@ -393,7 +436,7 @@ class TransactionFormModalState extends State<TransactionFormModal> {
 
   Widget _buildHeader() {
     return Text(
-      'Agregar transacción',
+      widget.transaction == null ? 'Agregar transacción' : 'Editar transacción',
       style: TextStyle(
         fontSize: ConfigGlobal.sizeTitle,
         fontWeight: FontWeight.bold,
@@ -587,7 +630,11 @@ class TransactionFormModalState extends State<TransactionFormModal> {
       style: ElevatedButton.styleFrom(
         minimumSize: const Size(double.infinity, 50),
       ),
-      child: const Text("Guardar Transacción"),
+      child: Text(
+        widget.transaction == null
+            ? "Guardar Transacción"
+            : "Actualizar Transacción",
+      ),
     );
   }
 
@@ -595,23 +642,22 @@ class TransactionFormModalState extends State<TransactionFormModal> {
     if (!_formKey.currentState!.validate()) return;
 
     final amountParsed = double.tryParse(_amountController.text);
+
     if (amountParsed == null) {
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Monto inválido')));
       return;
     }
 
-    if (_selectedStatus == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Seleccione un estado')));
-      return;
-    }
+    final isEditing = widget.transaction != null;
 
     final transaction = Transaction(
-      id: DateTime.now().millisecondsSinceEpoch,
+      id: isEditing
+          ? widget.transaction!.id
+          : DateTime.now().millisecondsSinceEpoch,
       type: _selectedType,
       amount: amountParsed,
-      statusId: int.tryParse(_selectedStatus!) ?? 0,
+      statusId: int.tryParse(_selectedStatus!)!,
       date: _selectedDate,
       note: _noteController.text.trim(),
       categoryId:
@@ -620,11 +666,17 @@ class TransactionFormModalState extends State<TransactionFormModal> {
       isRecurring: _isRecurring,
       recurringIntervalDays:
           _isRecurring ? int.tryParse(_recurringDaysController.text) : null,
-      files: [],
+      files: widget.transaction?.files ?? [],
     );
 
-    // El provider debe encargarse de enviar al backend (multipart si hay archivos).
-    context.read<TransactionsProvider>().addTransaction(context, transaction);
+    final provider = context.read<TransactionsProvider>();
+
+    if (isEditing) {
+      provider.updateTransaction(context, transaction);
+    } else {
+      provider.addTransaction(context, transaction);
+    }
+
     Navigator.pop(context);
   }
 }

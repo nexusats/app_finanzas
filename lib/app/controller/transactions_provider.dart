@@ -171,10 +171,13 @@ class TransactionsProvider extends ChangeNotifier {
       );
 
       if (success) {
+        print("entro");
         final index =
             _transactions.indexWhere((t) => t.id == updatedTransaction.id);
 
+        print("index: $index");
         if (index != -1) {
+          print("entro2");
           _transactions[index] = updatedTransaction;
           _selectedTransaction = updatedTransaction;
 
@@ -183,6 +186,8 @@ class TransactionsProvider extends ChangeNotifier {
 
           if (context.mounted) {
             CustomSnackbar.show(context, "Transacción actualizada");
+          } else {
+            CustomSnackbar.show(context, "Error al actualizar", isError: true);
           }
         }
       } else {
