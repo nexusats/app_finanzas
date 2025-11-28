@@ -223,7 +223,7 @@ class TransactionScreenState extends State<TransactionScreen> {
       activeIcon: Icons.close,
       backgroundColor: ConfigGlobal.backgroundColor,
       foregroundColor: Colors.white,
-      overlayOpacity: 0.1,
+      overlayOpacity: 0,
       spacing: 12,
       spaceBetweenChildren: 12,
       children: [
@@ -264,7 +264,7 @@ class TransactionScreenState extends State<TransactionScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: ConfigGlobal.backgroundSecondColor,
       builder: (context) {
         return DraggableScrollableSheet(
           expand: false,
@@ -335,8 +335,8 @@ class TransactionFormModalState extends State<TransactionFormModal> {
   }
 
   Future<List<dynamic>> _loadCategories() async {
-    final data = await GetSelectsService.fetchData(['expenses_categories']);
-    return data['expenses_categories'] ?? [];
+    final data = await GetSelectsService.fetchData(['categories']);
+    return data['categories'] ?? [];
   }
 
   Future<List<dynamic>> _loadGoals() async {
@@ -355,8 +355,9 @@ class TransactionFormModalState extends State<TransactionFormModal> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding:
-          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: SingleChildScrollView(
         child: Form(
           key: _formKey,

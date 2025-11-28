@@ -45,8 +45,8 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
   }
 
   Future<List<dynamic>> _loadCategories() async {
-    final data = await GetSelectsService.fetchData(['expenses_categories']);
-    return data['expenses_categories'] ?? [];
+    final data = await GetSelectsService.fetchData(['categories']);
+    return data['categories'] ?? [];
   }
 
   Future<List<dynamic>> _loadStatuses() async {
