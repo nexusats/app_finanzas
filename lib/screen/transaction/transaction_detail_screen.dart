@@ -5,7 +5,6 @@ import 'package:app_finanzas/app/model/transaction.dart';
 import 'package:app_finanzas/widgets/custom_snackbar.dart';
 import 'package:app_finanzas/app/services/get_selects_service.dart';
 import 'package:app_finanzas/app/controller/transactions_provider.dart';
-import 'package:app_finanzas/app/extensions/transaction_type_extension.dart';
 
 class TransactionDetailScreen extends StatefulWidget {
   final int transactionId;
@@ -13,7 +12,6 @@ class TransactionDetailScreen extends StatefulWidget {
   const TransactionDetailScreen({super.key, required this.transactionId});
 
   @override
-  // ignore: library_private_types_in_public_api
   _TransactionDetailScreenState createState() =>
       _TransactionDetailScreenState();
 }
@@ -31,7 +29,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
 
   dynamic _selectedCategory;
   dynamic _selectedStatus;
-  TransactionType? _selectedType;
+  String? _selectedType;
 
   @override
   void initState() {
@@ -65,6 +63,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
 
       await provider.fetchTransactionById(widget.transactionId);
       final tx = provider.selectedTransaction;
+
       if (tx != null) {
         _fillFields(tx, categories!, statuses!);
       }
@@ -77,17 +76,15 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
 
   void _fillFields(
       Transaction tx, List<dynamic> categories, List<dynamic> statuses) {
-    _descController.text = tx.description ?? '';
+    _descController.text = tx.note ?? '';
     _amountController.text = tx.amount.toString();
     _dateController.text = tx.date.toIso8601String().split('T').first;
 
-    // Encuentra la categoría (si aplica)
     _selectedCategory = categories.firstWhere(
       (c) => c['id'] == tx.categoryId,
       orElse: () => null,
     );
 
-    // Encuentra el estado
     _selectedStatus = statuses.firstWhere(
       (s) => s['id'] == tx.statusId,
       orElse: () => null,
@@ -105,15 +102,21 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
 
     final updated = Transaction(
       id: original.id,
-      description: _descController.text,
-      amount: double.tryParse(_amountController.text) ?? original.amount,
+      createdBy: original.createdBy,
       type: _selectedType!,
+      amount: double.tryParse(_amountController.text) ?? original.amount,
+      totalDebt: original.totalDebt,
+      date: DateTime.tryParse(_dateController.text) ?? original.date,
+      note: _descController.text,
+      categoryId: _selectedType == "expense"
+          ? (_selectedCategory is Map ? _selectedCategory['id'] : null)
+          : null,
+      goalId: original.goalId,
       statusId:
           _selectedStatus is Map ? _selectedStatus['id'] : _selectedStatus,
-      categoryId: _selectedCategory is Map
-          ? _selectedCategory['id']
-          : _selectedCategory,
-      date: DateTime.tryParse(_dateController.text) ?? original.date,
+      isRecurring: original.isRecurring,
+      recurringIntervalDays: original.recurringIntervalDays,
+      files: original.files,
     );
 
     await provider.updateTransaction(context, updated);
@@ -172,7 +175,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
   }
 
   Widget _buildTypeDropdown() {
-    return DropdownButtonFormField<TransactionType>(
+    return DropdownButtonFormField<String>(
       value: _selectedType,
       decoration: const InputDecoration(
         labelText: "Tipo de Transacción",
@@ -180,14 +183,13 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
       ),
       validator: (value) => value == null ? 'Seleccione un tipo' : null,
       onChanged: (value) => setState(() => _selectedType = value),
-      items: TransactionType.values.map(_buildDropdownItem).toList(),
-    );
-  }
-
-  DropdownMenuItem<TransactionType> _buildDropdownItem(TransactionType type) {
-    return DropdownMenuItem(
-      value: type,
-      child: Text(type.displayName),
+      items: const [
+        DropdownMenuItem(value: "income", child: Text("Ingreso")),
+        DropdownMenuItem(value: "expense", child: Text("Gasto")),
+        DropdownMenuItem(value: "saving", child: Text("Ahorro")),
+        DropdownMenuItem(value: "debt_in", child: Text("Entrada deuda")),
+        DropdownMenuItem(value: "debt_on", child: Text("Pago deuda")),
+      ],
     );
   }
 
@@ -218,7 +220,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                 children: [
                   TextFormField(
                     controller: _descController,
-                    decoration: const InputDecoration(labelText: 'Descripción'),
+                    decoration: const InputDecoration(labelText: 'Nota'),
                     validator: (value) =>
                         value == null || value.isEmpty ? 'Requerido' : null,
                   ),
@@ -237,8 +239,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                   const SizedBox(height: 10),
                   _buildStatusDropdown(),
                   const SizedBox(height: 10),
-                  if (_selectedType == TransactionType.E)
-                    _buildCategoriesDropdown(),
+                  if (_selectedType == "expense") _buildCategoriesDropdown(),
                   const SizedBox(height: 10),
                   TextFormField(
                     controller: _dateController,

@@ -20,33 +20,45 @@ class TransactionsProvider extends ChangeNotifier {
     _loadTransactions();
   }
 
+  // ----------------------
+  //   MÉTODOS DE CÁLCULO
+  // ----------------------
+
   double getTotalSavings() => _transactions
-      .where((t) => t.type == TransactionType.A)
+      .where((t) => t.type == "saving")
       .fold(0.0, (sum, t) => sum + t.amount);
 
   double getTotalIncomes() => _transactions
-      .where((t) => t.type == TransactionType.I)
+      .where((t) => t.type == "income")
       .fold(0.0, (sum, t) => sum + t.amount);
 
   double getTotalExpenses() => _transactions
-      .where((t) => (t.type == TransactionType.E && t.statusId != 8))
+      .where((t) => t.type == "expense" && t.statusId != 8)
       .fold(0.0, (sum, t) => sum + t.amount);
 
   double getTotalDebt() => _transactions
-      .where((t) => (t.type == TransactionType.E && t.statusId == 8))
+      .where((t) => t.type == "expense" && t.statusId == 8)
       .fold(0.0, (sum, t) => sum + t.amount);
 
   double getBalance() => getTotalIncomes() - getTotalExpenses();
 
-  double getTotalByType(TransactionType type) => _transactions
+  double getTotalByType(String type) => _transactions
       .where((t) => t.type == type)
       .fold(0.0, (sum, t) => sum + t.amount);
 
-  List<Transaction> getTransactionsByType(TransactionType type, {List<int> statusIds = const [8, 9]}) {
+  List<Transaction> getTransactionsByType(
+    String type, {
+    List<int> statusIds = const [8, 9],
+  }) {
     return _transactions.where((transaction) {
-      return transaction.type == type && statusIds.contains(transaction.statusId);
+      return transaction.type == type &&
+          statusIds.contains(transaction.statusId);
     }).toList();
   }
+
+  // ----------------------
+  //   FETCH GENERAL
+  // ----------------------
 
   Future<void> fetchTransactions() async {
     await _loadTransactions();
@@ -60,12 +72,12 @@ class TransactionsProvider extends ChangeNotifier {
 
     try {
       final fetchedTransactions = await _transactionService.getTransactions();
+
       _transactions
         ..clear()
-        ..addAll(fetchedTransactions.map((e) {
-          final tx = Transaction.fromJson(e as Map<String, dynamic>);
-          return tx;
-        }));
+        ..addAll(fetchedTransactions.map(
+          (e) => Transaction.fromJson(e as Map<String, dynamic>),
+        ));
 
       await _saveTransactions();
     } catch (_) {
@@ -73,14 +85,21 @@ class TransactionsProvider extends ChangeNotifier {
       if (storedTransactions != null) {
         _transactions
           ..clear()
-          ..addAll(storedTransactions
-              .map((json) => Transaction.fromJson(jsonDecode(json))));
+          ..addAll(
+            storedTransactions.map(
+              (json) => Transaction.fromJson(jsonDecode(json)),
+            ),
+          );
       }
     }
 
     _isLoading = false;
     notifyListeners();
   }
+
+  // ----------------------
+  //   FETCH POR ID
+  // ----------------------
 
   Future<void> fetchTransactionById(int id) async {
     if (_selectedTransaction?.id == id) return;
@@ -91,8 +110,13 @@ class TransactionsProvider extends ChangeNotifier {
     } catch (_) {
       _selectedTransaction = null;
     }
+
     notifyListeners();
   }
+
+  // ----------------------
+  //   GUARDAR LOCALMENTE
+  // ----------------------
 
   Future<void> _saveTransactions() async {
     _prefs ??= await SharedPreferences.getInstance();
@@ -102,11 +126,16 @@ class TransactionsProvider extends ChangeNotifier {
     );
   }
 
+  // ----------------------
+  //   AGREGAR
+  // ----------------------
+
   Future<void> addTransaction(
       BuildContext context, Transaction transaction) async {
     try {
       final success =
           await _transactionService.createTransaction(transaction.toJson());
+
       if (success) {
         _transactions.add(transaction);
         await _saveTransactions();
@@ -129,6 +158,10 @@ class TransactionsProvider extends ChangeNotifier {
     }
   }
 
+  // ----------------------
+  //   ACTUALIZAR
+  // ----------------------
+
   Future<void> updateTransaction(
       BuildContext context, Transaction updatedTransaction) async {
     try {
@@ -138,10 +171,13 @@ class TransactionsProvider extends ChangeNotifier {
       );
 
       if (success) {
-        final index = _transactions.indexWhere((t) => t.id == updatedTransaction.id);
+        final index =
+            _transactions.indexWhere((t) => t.id == updatedTransaction.id);
+
         if (index != -1) {
           _transactions[index] = updatedTransaction;
           _selectedTransaction = updatedTransaction;
+
           await _saveTransactions();
           notifyListeners();
 
@@ -160,6 +196,10 @@ class TransactionsProvider extends ChangeNotifier {
       }
     }
   }
+
+  // ----------------------
+  //   ELIMINAR
+  // ----------------------
 
   Future<void> removeTransaction(
       BuildContext context, Transaction transaction) async {

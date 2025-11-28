@@ -209,8 +209,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 const SizedBox(width: 12),
                             itemBuilder: (_, __) => buildFinanceCardSkeleton(),
                           ),
-                        )]
-                      else if (goals.isNotEmpty) ...[
+                        )
+                      ] else if (goals.isNotEmpty) ...[
                         const SizedBox(height: 24),
                         const Text(
                           "Estado de los objetivos",
@@ -246,10 +246,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                 const SizedBox(width: 12),
                             itemBuilder: (_, __) => buildFinanceCardSkeleton(),
                           ),
-                        )]
-                      else if (txProvider
-                              .getTransactionsByType(TransactionType.E)
-                              .isNotEmpty) ...[
+                        )
+                      ] else if (txProvider
+                          .getTransactionsByType("expense")
+                          .isNotEmpty) ...[
                         const SizedBox(height: 24),
                         const Text(
                           "Estado de las deudas",
@@ -263,13 +263,13 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: ListView.separated(
                             scrollDirection: Axis.horizontal,
                             itemCount: txProvider
-                                .getTransactionsByType(TransactionType.E)
+                                .getTransactionsByType("expense")
                                 .length,
                             separatorBuilder: (_, __) =>
                                 const SizedBox(width: 12),
                             itemBuilder: (context, index) {
-                              final debt = txProvider.getTransactionsByType(
-                                  TransactionType.E)[index];
+                              final debt = txProvider
+                                  .getTransactionsByType("expense")[index];
                               return _buildDebtCard(debt);
                             },
                           ),
@@ -368,7 +368,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  transaction.description ?? "Sin descripción",
+                  transaction.note ?? "Sin descripción",
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontWeight: FontWeight.w600),
