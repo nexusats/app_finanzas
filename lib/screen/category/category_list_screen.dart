@@ -14,22 +14,53 @@ class CategoryListScreen extends StatefulWidget {
 }
 
 class _CategoryListScreenState extends State<CategoryListScreen> {
+  // --------------------------
+  // Íconos disponibles
+  // --------------------------
+  final Map<String, IconData> iconMap = {
+    "shopping_cart": Icons.shopping_cart,
+    "account_balance": Icons.account_balance,
+    "savings": Icons.savings,
+    "credit_card": Icons.credit_card,
+    "home": Icons.home,
+    "restaurant": Icons.restaurant,
+    "local_gas_station": Icons.local_gas_station,
+    "school": Icons.school,
+    "health_and_safety": Icons.health_and_safety,
+
+    // extras del map original
+    "food": Icons.fastfood,
+    "shopping": Icons.shopping_cart,
+    "car": Icons.directions_car,
+    "money": Icons.attach_money,
+    "star": Icons.star,
+    "category": Icons.category,
+  };
+
+  IconData _resolveIcon(String? name) {
+    if (name == null) return Icons.category;
+    return iconMap[name] ?? Icons.category;
+  }
+
   @override
   void initState() {
     super.initState();
     Future.microtask(() {
       final provider =
           Provider.of<CategoryExpenseProvider>(context, listen: false);
-      provider.fetchFromApiAndUpdateLocal(); // Carga automática al iniciar
+      provider.fetchFromApiAndUpdateLocal();
     });
   }
 
   void _navigateToEditScreen(
       BuildContext context, CategoryExpense? category) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CategoryEditScreen(category: category),
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => FractionallySizedBox(
+        heightFactor: 0.65, // Tamaño del modal
+        child: CategoryEditModal(category: category),
       ),
     );
 
@@ -78,7 +109,12 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                             margin: const EdgeInsets.symmetric(
                                 horizontal: 16, vertical: 8),
                             child: ListTile(
-                              title: Text(category.name), // ← AJUSTE NECESARIO
+                              leading: Icon(
+                                _resolveIcon(category.icon),
+                                size: 32,
+                                color: ConfigGlobal.backgroundColor,
+                              ),
+                              title: Text(category.name),
                               subtitle: category.type != null
                                   ? Text(category.type!)
                                   : null,
@@ -92,11 +128,36 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                                         context, category),
                                   ),
                                   IconButton(
-                                    icon: const Icon(Icons.delete,
-                                        color: Colors.red),
-                                    onPressed: () =>
-                                        provider.removeCategory(category),
-                                  ),
+                                      icon: const Icon(Icons.delete,
+                                          color: Colors.red),
+                                      onPressed: () => {
+                                            showDialog(
+                                              context: context,
+                                              builder: (context) => AlertDialog(
+                                                title: const Text(
+                                                    'Eliminar Categoría'),
+                                                content: Text(
+                                                    '¿Estás seguro de eliminar la categoría ${category.name}'),
+                                                actions: [
+                                                  TextButton(
+                                                    child:
+                                                        const Text('Cancelar'),
+                                                    onPressed: () =>
+                                                        Navigator.pop(context),
+                                                  ),
+                                                  TextButton(
+                                                    child:
+                                                        const Text('Eliminar'),
+                                                    onPressed: () {
+                                                      provider.removeCategory(
+                                                          category);
+                                                      Navigator.pop(context);
+                                                    },
+                                                  ),
+                                                ],
+                                              ),
+                                            )
+                                          }),
                                 ],
                               ),
                             ),

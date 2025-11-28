@@ -3,16 +3,16 @@ import 'package:provider/provider.dart';
 import 'package:app_finanzas/app/controller/category_expense_provider.dart';
 import 'package:app_finanzas/app/model/category_expense.dart';
 
-class CategoryEditScreen extends StatefulWidget {
+class CategoryEditModal extends StatefulWidget {
   final CategoryExpense? category;
 
-  const CategoryEditScreen({super.key, this.category});
+  const CategoryEditModal({super.key, this.category});
 
   @override
-  State<CategoryEditScreen> createState() => _CategoryEditScreenState();
+  State<CategoryEditModal> createState() => _CategoryEditModalState();
 }
 
-class _CategoryEditScreenState extends State<CategoryEditScreen> {
+class _CategoryEditModalState extends State<CategoryEditModal> {
   final _formKey = GlobalKey<FormState>();
 
   late TextEditingController _nameController;
@@ -27,7 +27,6 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> {
     "debt": "Deuda",
   };
 
-  /// Íconos unificados
   final Map<String, IconData> icons = {
     "shopping_cart": Icons.shopping_cart,
     "account_balance": Icons.account_balance,
@@ -38,8 +37,6 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> {
     "local_gas_station": Icons.local_gas_station,
     "school": Icons.school,
     "health_and_safety": Icons.health_and_safety,
-
-    // íconos adicionales
     "food": Icons.fastfood,
     "shopping": Icons.shopping_cart,
     "car": Icons.directions_car,
@@ -51,7 +48,6 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> {
   @override
   void initState() {
     super.initState();
-
     _nameController = TextEditingController(text: widget.category?.name ?? '');
     _iconController = TextEditingController(text: widget.category?.icon ?? '');
     _selectedType = widget.category?.type;
@@ -76,7 +72,7 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> {
       "type": _selectedType,
     };
 
-    bool success = false;
+    bool success;
 
     if (widget.category == null) {
       success = await provider.createCategory(body);
@@ -86,19 +82,19 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> {
 
     if (!mounted) return;
 
-    if (success) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Categoría guardada correctamente')),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error al guardar categoría')),
-      );
-    }
+    Navigator.pop(context);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? 'Categoría guardada correctamente'
+              : 'Error al guardar categoría',
+        ),
+      ),
+    );
   }
 
-  /// Picker de íconos
   void _pickIcon() async {
     final icon = await showModalBottomSheet<String>(
       context: context,
@@ -112,10 +108,10 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> {
             itemCount: iconKeys.length,
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 4,
-              childAspectRatio: 1,
             ),
             itemBuilder: (_, index) {
               final iconName = iconKeys[index];
+
               return GestureDetector(
                 onTap: () => Navigator.pop(context, iconName),
                 child: Column(
@@ -134,92 +130,138 @@ class _CategoryEditScreenState extends State<CategoryEditScreen> {
     );
 
     if (icon != null) {
-      setState(() {
-        _iconController.text = icon;
-      });
+      setState(() => _iconController.text = icon);
     }
   }
 
-  /// Renderizado seguro del ícono
   IconData _buildIcon(String? name) {
-    if (name == null || name.isEmpty) return Icons.category;
-    return icons[name] ?? Icons.category;
+    return (name != null && icons[name] != null)
+        ? icons[name]!
+        : Icons.category;
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
-    final isEditing = widget.category != null;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(isEditing ? 'Editar Categoría' : 'Nueva Categoría'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              /// Nombre
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Nombre',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Ingrese un nombre';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-
-              /// Selector tipo
-              DropdownButtonFormField<String>(
-                value: _selectedType,
-                items: categoryTypes.entries.map((e) {
-                  return DropdownMenuItem(
-                    value: e.key,
-                    child: Text(e.value),
-                  );
-                }).toList(),
-                decoration: const InputDecoration(
-                  labelText: "Tipo",
-                  border: OutlineInputBorder(),
-                ),
-                onChanged: (value) => setState(() => _selectedType = value),
-                validator: (value) =>
-                    value == null ? "Seleccione un tipo" : null,
-              ),
-              const SizedBox(height: 16),
-
-              /// Icono
-              TextFormField(
-                controller: _iconController,
-                readOnly: true,
-                decoration: InputDecoration(
-                  labelText: 'Icono',
-                  prefixIcon: Icon(_buildIcon(_iconController.text)),
-                  border: const OutlineInputBorder(),
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.search),
-                    onPressed: _pickIcon,
+    return Material(
+      type: MaterialType.transparency,
+      child: AnimatedPadding(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: 450, // Perfecto para web/tablet
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(22),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(25),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 20,
+                    offset: const Offset(0, 6),
                   ),
+                ],
+              ),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 15),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade400,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    Center(
+                      child: Text(
+                        widget.category == null
+                            ? "Nueva Categoría"
+                            : "Editar Categoría",
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF3A3A8C),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    TextFormField(
+                      controller: _nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Nombre',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) =>
+                          value!.isEmpty ? 'Ingrese un nombre' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: _selectedType,
+                      decoration: const InputDecoration(
+                        labelText: "Tipo",
+                        border: OutlineInputBorder(),
+                      ),
+                      items: categoryTypes.entries.map((e) {
+                        return DropdownMenuItem(
+                          value: e.key,
+                          child: Text(e.value),
+                        );
+                      }).toList(),
+                      validator: (value) =>
+                          value == null ? "Seleccione un tipo" : null,
+                      onChanged: (value) =>
+                          setState(() => _selectedType = value),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _iconController,
+                      readOnly: true,
+                      decoration: InputDecoration(
+                        labelText: 'Icono',
+                        border: const OutlineInputBorder(),
+                        prefixIcon: Icon(_buildIcon(_iconController.text)),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.search),
+                          onPressed: _pickIcon,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 26),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF3A3A8C),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: _saveCategory,
+                        child: const Text(
+                          "Guardar",
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 24),
-
-              /// Guardar
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _saveCategory,
-                  child: const Text("Guardar"),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
