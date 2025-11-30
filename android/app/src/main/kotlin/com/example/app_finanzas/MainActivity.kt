@@ -1,4 +1,4 @@
-package com.example.app_finanzas
+package com.nexusats.app_finanzas
 
 import io.flutter.embedding.android.FlutterActivity
 
