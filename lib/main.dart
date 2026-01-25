@@ -7,8 +7,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:app_finanzas/screen/home_screen.dart';
 import 'package:app_finanzas/screen/auth/login_screen.dart';
 import 'package:app_finanzas/app/controller/auth_provider.dart';
+import 'package:app_finanzas/app/controller/category_provider.dart';
 import 'package:app_finanzas/app/controller/transactions_provider.dart';
-import 'package:app_finanzas/app/controller/category_expense_provider.dart';
 
 Future<void> main() async {
   const String envFile = bool.fromEnvironment('dart.vm.product')
@@ -37,7 +37,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => TransactionsProvider()),
-        ChangeNotifierProvider(create: (_) => CategoryExpenseProvider()),
+        ChangeNotifierProvider(create: (_) => CategoryProvider()),
       ],
       child: Consumer<AuthProvider>(
         builder: (context, authProvider, child) {

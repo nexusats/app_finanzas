@@ -1,20 +1,20 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:app_finanzas/app/model/category_expense.dart';
+import 'package:app_finanzas/app/model/category.dart';
 import 'package:app_finanzas/app/services/category_service.dart';
 
-class CategoryExpenseProvider with ChangeNotifier {
+class CategoryProvider with ChangeNotifier {
   final CategoryService _categoryService = CategoryService();
-  final String _storageKey = 'categories_expense';
+  final String _storageKey = 'categories';
 
-  List<CategoryExpense> _categories = [];
+  List<Category> _categories = [];
   bool _isLoading = true;
 
-  List<CategoryExpense> get categories => _categories;
+  List<Category> get categories => _categories;
   bool get isLoading => _isLoading;
 
-  CategoryExpenseProvider() {
+  CategoryProvider() {
     _initProvider();
   }
 
@@ -31,7 +31,7 @@ class CategoryExpenseProvider with ChangeNotifier {
       try {
         final decoded = jsonDecode(data);
         _categories =
-            (decoded as List).map((e) => CategoryExpense.fromJson(e)).toList();
+            (decoded as List).map((e) => Category.fromJson(e)).toList();
       } catch (_) {
         _categories = [];
       }
@@ -54,7 +54,7 @@ class CategoryExpenseProvider with ChangeNotifier {
       final response = await _categoryService.getCategories();
 
       if (response.isNotEmpty) {
-        _categories = response.map((e) => CategoryExpense.fromJson(e)).toList();
+        _categories = response.map((e) => Category.fromJson(e)).toList();
         await _saveCategoriesToLocal();
         notifyListeners();
       } else {
@@ -87,7 +87,7 @@ class CategoryExpenseProvider with ChangeNotifier {
     return success;
   }
 
-  Future<void> removeCategory(CategoryExpense category) async {
+  Future<void> removeCategory(Category category) async {
     final success = await _categoryService.deleteCategory(category.id!);
     if (success) {
       _categories.removeWhere((e) => e.id == category.id);

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:app_finanzas/config/global.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
-import 'package:app_finanzas/app/model/category_expense.dart';
+import 'package:app_finanzas/app/model/category.dart';
 import 'package:app_finanzas/screen/category/category_edit_screen.dart';
-import 'package:app_finanzas/app/controller/category_expense_provider.dart';
+import 'package:app_finanzas/app/controller/category_provider.dart';
 
 class CategoryListScreen extends StatefulWidget {
   const CategoryListScreen({super.key});
@@ -14,9 +15,6 @@ class CategoryListScreen extends StatefulWidget {
 }
 
 class _CategoryListScreenState extends State<CategoryListScreen> {
-  // --------------------------
-  // Íconos disponibles
-  // --------------------------
   final Map<String, IconData> iconMap = {
     "shopping_cart": Icons.shopping_cart,
     "account_balance": Icons.account_balance,
@@ -27,8 +25,6 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
     "local_gas_station": Icons.local_gas_station,
     "school": Icons.school,
     "health_and_safety": Icons.health_and_safety,
-
-    // extras del map original
     "food": Icons.fastfood,
     "shopping": Icons.shopping_cart,
     "car": Icons.directions_car,
@@ -42,38 +38,97 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
     return iconMap[name] ?? Icons.category;
   }
 
+  String _typeLabel(String? type) {
+    if (type == 'income') return 'Ingreso';
+    if (type == 'expense') return 'Gasto';
+    return '';
+  }
+
   @override
   void initState() {
     super.initState();
     Future.microtask(() {
-      final provider =
-          Provider.of<CategoryExpenseProvider>(context, listen: false);
-      provider.fetchFromApiAndUpdateLocal();
+      Provider.of<CategoryProvider>(context, listen: false)
+          .fetchFromApiAndUpdateLocal();
     });
   }
 
-  void _navigateToEditScreen(
-      BuildContext context, CategoryExpense? category) async {
-    final result = await showModalBottomSheet<bool>(
+  Future<void> _navigateToEditScreen(
+      BuildContext context, Category? category) async {
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => FractionallySizedBox(
-        heightFactor: 0.65, // Tamaño del modal
+        heightFactor: 0.65,
         child: CategoryEditModal(category: category),
       ),
     );
 
-    if (result == true) {
-      Provider.of<CategoryExpenseProvider>(context, listen: false)
-          .fetchFromApiAndUpdateLocal();
-    }
+    // sin depender de "result == true" (para que refresque siempre)
+    if (!mounted) return;
+    Provider.of<CategoryProvider>(context, listen: false)
+        .fetchFromApiAndUpdateLocal();
+  }
+
+  Future<void> _confirmArchive(
+      CategoryProvider provider, Category category) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Archivar categoría'),
+        content: Text('¿Seguro que deseas archivar "${category.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Archivar'),
+          ),
+        ],
+      ),
+    );
+
+    if (ok != true) return;
+
+    provider.removeCategory(category);
+    // opcional: refrescar del API por si el backend reordena / filtra
+    await provider.fetchFromApiAndUpdateLocal();
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Categoría archivada')),
+    );
+  }
+
+  Widget _skeletonList() {
+    return ListView.builder(
+      padding: const EdgeInsets.only(bottom: 100, top: 8),
+      itemCount: 8,
+      itemBuilder: (_, __) => Shimmer.fromColors(
+        baseColor: Colors.grey[300]!,
+        highlightColor: Colors.grey[100]!,
+        child: Card(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: const ListTile(
+            leading: CircleAvatar(backgroundColor: Colors.white, radius: 18),
+            title: SizedBox(height: 14, width: double.infinity),
+            subtitle: SizedBox(height: 12, width: 120),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<CategoryExpenseProvider>(
+    return Consumer<CategoryProvider>(
       builder: (context, provider, _) {
+        // Si el backend trae archivadas y no quieres mostrarlas:
+        // final categories = provider.categories.where((c) => c.isArchived != true).toList();
         final categories = provider.categories;
 
         return Scaffold(
@@ -96,73 +151,66 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
               ),
             ),
             child: provider.isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? _skeletonList()
                 : categories.isEmpty
                     ? const Center(child: Text('No hay categorías registradas'))
-                    : ListView.builder(
-                        padding: const EdgeInsets.only(bottom: 100),
-                        itemCount: categories.length,
-                        itemBuilder: (context, index) {
-                          final category = categories[index];
+                    : RefreshIndicator(
+                        onRefresh: () => provider.fetchFromApiAndUpdateLocal(),
+                        child: ListView.builder(
+                          padding: const EdgeInsets.only(bottom: 100),
+                          itemCount: categories.length,
+                          itemBuilder: (context, index) {
+                            final category = categories[index];
+                            final archived = category.isArchived == true;
 
-                          return Card(
-                            margin: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
-                            child: ListTile(
-                              leading: Icon(
-                                _resolveIcon(category.icon),
-                                size: 32,
-                                color: ConfigGlobal.backgroundColor,
+                            return Card(
+                              margin: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                              child: ListTile(
+                                leading: Icon(
+                                  _resolveIcon(category.icon),
+                                  size: 32,
+                                  color: archived
+                                      ? Colors.grey
+                                      : ConfigGlobal.backgroundColor,
+                                ),
+                                title: Text(category.name),
+                                subtitle: (category.type != null &&
+                                        category.type!.isNotEmpty)
+                                    ? Text(_typeLabel(category.type))
+                                    : null,
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: Icon(
+                                        Icons.edit,
+                                        color: archived
+                                            ? Colors.grey
+                                            : Colors.blue,
+                                      ),
+                                      onPressed: archived
+                                          ? null
+                                          : () => _navigateToEditScreen(
+                                              context, category),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(
+                                        Icons.archive,
+                                        color:
+                                            archived ? Colors.grey : Colors.red,
+                                      ),
+                                      onPressed: archived
+                                          ? null
+                                          : () => _confirmArchive(
+                                              provider, category),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              title: Text(category.name),
-                              subtitle: category.type != null
-                                  ? Text(category.type!)
-                                  : null,
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.edit,
-                                        color: Colors.blue),
-                                    onPressed: () => _navigateToEditScreen(
-                                        context, category),
-                                  ),
-                                  IconButton(
-                                      icon: const Icon(Icons.delete,
-                                          color: Colors.red),
-                                      onPressed: () => {
-                                            showDialog(
-                                              context: context,
-                                              builder: (context) => AlertDialog(
-                                                title: const Text(
-                                                    'Eliminar Categoría'),
-                                                content: Text(
-                                                    '¿Estás seguro de eliminar la categoría ${category.name}'),
-                                                actions: [
-                                                  TextButton(
-                                                    child:
-                                                        const Text('Cancelar'),
-                                                    onPressed: () =>
-                                                        Navigator.pop(context),
-                                                  ),
-                                                  TextButton(
-                                                    child:
-                                                        const Text('Eliminar'),
-                                                    onPressed: () {
-                                                      provider.removeCategory(
-                                                          category);
-                                                      Navigator.pop(context);
-                                                    },
-                                                  ),
-                                                ],
-                                              ),
-                                            )
-                                          }),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
+                            );
+                          },
+                        ),
                       ),
           ),
           floatingActionButton: SpeedDial(

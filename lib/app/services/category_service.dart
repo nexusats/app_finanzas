@@ -33,17 +33,33 @@ class CategoryService {
   }
 
   Future<List<dynamic>> getCategories() async {
-    final url = Uri.parse('$baseUrl/$module');
+    final url = Uri.parse('$baseUrl/categories');
     final headers = await _getHeaders();
-
     final response = await http.get(url, headers: headers);
 
-    if (response.statusCode == 200) {
-      final body = jsonDecode(response.body);
-      return body['data'];
-    } else {
-      return [];
+    if (response.statusCode != 200) return [];
+
+    final decoded = jsonDecode(response.body);
+
+    // Puede venir como Map (lo normal)
+    if (decoded is! Map<String, dynamic>) return [];
+
+    final data = decoded['data'];
+
+    // Caso 1: data ya es lista
+    if (data is List) return data;
+
+    // Caso 2: data es paginado: { data: [...] }
+    if (data is Map<String, dynamic>) {
+      final innerData = data['data'];
+      if (innerData is List) return innerData;
+
+      // Caso 3: data trae { categories: [...] } (como tu getData)
+      final cats = data['categories'];
+      if (cats is List) return cats;
     }
+
+    return [];
   }
 
   Future<Map<String, dynamic>?> getCategoryById(int id) async {

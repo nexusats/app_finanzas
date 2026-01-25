@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:app_finanzas/app/controller/category_expense_provider.dart';
-import 'package:app_finanzas/app/model/category_expense.dart';
+import 'package:app_finanzas/app/model/category.dart';
+import 'package:app_finanzas/app/controller/category_provider.dart';
 
 class CategoryEditModal extends StatefulWidget {
-  final CategoryExpense? category;
+  final Category? category;
 
   const CategoryEditModal({super.key, this.category});
 
@@ -20,11 +20,10 @@ class _CategoryEditModalState extends State<CategoryEditModal> {
 
   String? _selectedType;
 
-  final Map<String, String> categoryTypes = {
+  // Solo lo que soporta el API: income | expense
+  final Map<String, String> categoryTypes = const {
     "income": "Ingreso",
     "expense": "Gasto",
-    "saving": "Ahorro",
-    "debt": "Deuda",
   };
 
   final Map<String, IconData> icons = {
@@ -48,9 +47,13 @@ class _CategoryEditModalState extends State<CategoryEditModal> {
   @override
   void initState() {
     super.initState();
+
     _nameController = TextEditingController(text: widget.category?.name ?? '');
     _iconController = TextEditingController(text: widget.category?.icon ?? '');
-    _selectedType = widget.category?.type;
+
+    // Si viene un type raro (legacy), lo limpiamos para no romper el API
+    final t = widget.category?.type;
+    _selectedType = (t != null && categoryTypes.containsKey(t)) ? t : null;
   }
 
   @override
@@ -63,17 +66,19 @@ class _CategoryEditModalState extends State<CategoryEditModal> {
   Future<void> _saveCategory() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final provider =
-        Provider.of<CategoryExpenseProvider>(context, listen: false);
+    final provider = Provider.of<CategoryProvider>(context, listen: false);
 
-    final body = {
-      "name": _nameController.text.trim(),
-      "icon": _iconController.text.trim(),
-      "type": _selectedType,
+    final name = _nameController.text.trim();
+    final iconRaw = _iconController.text.trim();
+
+    // API: icon nullable, si está vacío mandamos null
+    final body = <String, dynamic>{
+      "type": _selectedType, // required por API
+      "name": name, // required por API
+      "icon": iconRaw.isEmpty ? null : iconRaw,
     };
 
     bool success;
-
     if (widget.category == null) {
       success = await provider.createCategory(body);
     } else {
@@ -141,7 +146,6 @@ class _CategoryEditModalState extends State<CategoryEditModal> {
   }
 
   @override
-  @override
   Widget build(BuildContext context) {
     return Material(
       type: MaterialType.transparency,
@@ -153,9 +157,7 @@ class _CategoryEditModalState extends State<CategoryEditModal> {
         ),
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxWidth: 450, // Perfecto para web/tablet
-            ),
+            constraints: const BoxConstraints(maxWidth: 450),
             child: Container(
               padding: const EdgeInsets.all(22),
               decoration: BoxDecoration(
@@ -205,8 +207,15 @@ class _CategoryEditModalState extends State<CategoryEditModal> {
                         labelText: 'Nombre',
                         border: OutlineInputBorder(),
                       ),
-                      validator: (value) =>
-                          value!.isEmpty ? 'Ingrese un nombre' : null,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Ingrese un nombre';
+                        }
+                        if (value.trim().length > 120) {
+                          return 'Máximo 120 caracteres';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
@@ -231,12 +240,25 @@ class _CategoryEditModalState extends State<CategoryEditModal> {
                       controller: _iconController,
                       readOnly: true,
                       decoration: InputDecoration(
-                        labelText: 'Icono',
+                        labelText: 'Icono (opcional)',
                         border: const OutlineInputBorder(),
                         prefixIcon: Icon(_buildIcon(_iconController.text)),
-                        suffixIcon: IconButton(
-                          icon: const Icon(Icons.search),
-                          onPressed: _pickIcon,
+                        suffixIcon: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // limpiar icono (para mandar null)
+                            IconButton(
+                              tooltip: 'Quitar',
+                              icon: const Icon(Icons.close),
+                              onPressed: () =>
+                                  setState(() => _iconController.text = ''),
+                            ),
+                            IconButton(
+                              tooltip: 'Buscar',
+                              icon: const Icon(Icons.search),
+                              onPressed: _pickIcon,
+                            ),
+                          ],
                         ),
                       ),
                     ),
