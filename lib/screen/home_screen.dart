@@ -143,6 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context, snap) {
         final isLoading = snap.connectionState == ConnectionState.waiting;
 
+        // Contenedor base (misma UI que ya tienes)
         return Container(
           decoration: const BoxDecoration(
             color: Colors.white,
@@ -155,29 +156,40 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                "Resumen financiero",
-                style: TextStyle(
-                  fontSize: ConfigGlobal.sizeTitle,
-                  fontWeight: FontWeight.bold,
+              // HEADER
+              if (isLoading)
+                _titleSkeleton(width: 220, height: 18)
+              else
+                const Text(
+                  "Resumen financiero",
+                  style: TextStyle(
+                    fontSize: ConfigGlobal.sizeTitle,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
+
               const SizedBox(height: 16),
+
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: () async {
+                    // Refresca meta (accounts/categories)
                     setState(() => _metaFuture = _loadMeta());
-                    // si también quieres refrescar movimientos, deja esto:
+
+                    // si también quieres refrescar movimientos (como ya lo tienes)
                     context.read<TransactionsProvider>().fetchTransactions();
-                    await _metaFuture;
+
+                    await _metaFuture; // asegura que actualice el cache visual
                   },
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // ---- CUENTAS (cards) ----
-                        if (isLoading)
+                        // ---------------- CUENTAS ----------------
+                        if (isLoading) ...[
+                          _titleSkeleton(width: 90, height: 14),
+                          const SizedBox(height: 10),
                           SizedBox(
                             height: 90,
                             child: ListView.separated(
@@ -187,14 +199,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                   const SizedBox(width: 12),
                               itemBuilder: (_, __) => _accountCardSkeleton(),
                             ),
-                          )
-                        else if (snap.hasError)
+                          ),
+                        ] else if (snap.hasError) ...[
                           _errorBox(
                             'Error al cargar cuentas',
                             onRetry: () =>
                                 setState(() => _metaFuture = _loadMeta()),
-                          )
-                        else ...[
+                          ),
+                        ] else ...[
                           const Text(
                             "Cuentas",
                             style: TextStyle(fontWeight: FontWeight.bold),
@@ -217,8 +229,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
                         const SizedBox(height: 18),
 
-                        // ---- CATEGORÍAS (chips simples) ----
-                        if (!isLoading && snap.hasData) ...[
+                        // -------------- CATEGORÍAS (CHIPS) --------------
+                        if (isLoading) ...[
+                          _titleSkeleton(width: 110, height: 14),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              _chipSkeleton(),
+                              _chipSkeleton(),
+                            ],
+                          ),
+                        ] else if (snap.hasError) ...[
+                          _errorBox(
+                            'Error al cargar categorías',
+                            onRetry: () =>
+                                setState(() => _metaFuture = _loadMeta()),
+                          ),
+                        ] else ...[
                           const Text(
                             "Categorías",
                             style: TextStyle(fontWeight: FontWeight.bold),
@@ -241,6 +270,13 @@ class _HomeScreenState extends State<HomeScreen> {
                             ],
                           ),
                         ],
+
+                        const SizedBox(height: 18),
+
+                        // Opcional: mini bloque skeleton extra para que no se vea “vacío”
+                        if (isLoading) ...[
+                          _blockSkeleton(height: 70),
+                        ],
                       ],
                     ),
                   ),
@@ -250,6 +286,60 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _titleSkeleton({required double width, required double height}) {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
+      child: Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+    );
+  }
+
+  Widget _chipSkeleton() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 18, height: 18, color: Colors.white),
+            const SizedBox(width: 8),
+            Container(width: 90, height: 12, color: Colors.white),
+            const SizedBox(width: 6),
+            Container(width: 20, height: 12, color: Colors.white),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _blockSkeleton({required double height}) {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
+      child: Container(
+        width: double.infinity,
+        height: height,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+      ),
     );
   }
 
