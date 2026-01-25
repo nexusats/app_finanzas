@@ -7,7 +7,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:app_finanzas/screen/home_screen.dart';
 import 'package:app_finanzas/screen/auth/login_screen.dart';
 import 'package:app_finanzas/app/controller/auth_provider.dart';
-import 'package:app_finanzas/app/controller/goals_provider.dart';
 import 'package:app_finanzas/app/controller/transactions_provider.dart';
 import 'package:app_finanzas/app/controller/category_expense_provider.dart';
 
@@ -17,7 +16,8 @@ Future<void> main() async {
       : ".env.development";
 
   await dotenv.load(fileName: envFile); // Carga las variables de entorno
-  WidgetsFlutterBinding.ensureInitialized(); // Asegura que el framework esté inicializado
+  WidgetsFlutterBinding
+      .ensureInitialized(); // Asegura que el framework esté inicializado
   // SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky); // Full screen
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
@@ -35,7 +35,6 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => GoalsProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => TransactionsProvider()),
         ChangeNotifierProvider(create: (_) => CategoryExpenseProvider()),
@@ -48,7 +47,9 @@ class MyApp extends StatelessWidget {
             theme: ThemeData.dark().copyWith(
               scaffoldBackgroundColor: Pallete.backgroundColor,
             ),
-            home: authProvider.isAuthenticated ? const HomeScreen() : const LoginScreen(),
+            home: authProvider.isAuthenticated
+                ? const HomeScreen()
+                : const LoginScreen(),
           );
         },
       ),

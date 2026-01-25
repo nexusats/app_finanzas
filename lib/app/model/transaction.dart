@@ -1,70 +1,144 @@
 class Transaction {
   final int? id;
-  final int? createdBy;
+  final int? userId;
+
+  /// income | expense
   final String type;
+
   final double amount;
-  final double? totalDebt;
   final DateTime date;
 
   final String? note;
-  final int? categoryId;
-  final int? goalId;
-  final int statusId;
 
-  final bool isRecurring;
-  final int? recurringIntervalDays;
-  final List<String> files;
+  /// FK requeridos por API
+  final int accountId;
+  final int categoryId;
+
+  /// Datos incluidos por el backend (with account/category)
+  final AccountMini? account;
+  final CategoryMini? category;
+
+  /// Adjuntos (si los estás retornando)
+  final List<TransactionAttachment> attachments;
 
   Transaction({
     this.id,
-    this.createdBy,
+    this.userId,
     required this.type,
     required this.amount,
-    this.totalDebt,
     required this.date,
     this.note,
-    this.categoryId,
-    this.goalId,
-    required this.statusId,
-    this.isRecurring = false,
-    this.recurringIntervalDays,
-    this.files = const [],
+    required this.accountId,
+    required this.categoryId,
+    this.account,
+    this.category,
+    this.attachments = const [],
   });
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
+    // amount puede venir como string/num
+    final amount = double.tryParse(json['amount']?.toString() ?? '') ?? 0.0;
+
+    // date normalmente viene "YYYY-MM-DD" o ISO
+    final dateStr = json['date']?.toString();
+    final parsedDate = (dateStr != null && dateStr.isNotEmpty)
+        ? DateTime.tryParse(dateStr) ?? DateTime.now()
+        : DateTime.now();
+
+    // account/category pueden venir como objeto
+    final accountJson = json['account'];
+    final categoryJson = json['category'];
+
+    // attachments puede venir como lista
+    final atts = (json['attachments'] is List)
+        ? (json['attachments'] as List)
+            .whereType<Map<String, dynamic>>()
+            .map(TransactionAttachment.fromJson)
+            .toList()
+        : <TransactionAttachment>[];
+
     return Transaction(
-      id: json['id'],
-      createdBy: json['created_by'],
-      type: json['type'] ?? '',
-      amount: double.tryParse(json['amount'].toString()) ?? 0.0,
-      totalDebt: json['total_debt'] != null
-          ? double.tryParse(json['total_debt'].toString())
+      id: json['id'] as int?,
+      userId: json['user_id'] as int?,
+      type: (json['type'] ?? '').toString(),
+      amount: amount,
+      date: parsedDate,
+      note: json['note']?.toString(),
+      accountId: int.tryParse(json['account_id']?.toString() ?? '') ?? 0,
+      categoryId: int.tryParse(json['category_id']?.toString() ?? '') ?? 0,
+      account: accountJson is Map<String, dynamic>
+          ? AccountMini.fromJson(accountJson)
           : null,
-      date:
-          json['date'] != null ? DateTime.parse(json['date']) : DateTime.now(),
-      note: json['note'],
-      categoryId: json['category_id'],
-      goalId: json['goal_id'],
-      statusId: json['status_id'] ?? 1,
-      isRecurring: json['is_recurring'] == 1 || json['is_recurring'] == true,
-      recurringIntervalDays: json['recurring_interval_days'],
-      files: json['files'] != null ? List<String>.from(json['files']) : [],
+      category: categoryJson is Map<String, dynamic>
+          ? CategoryMini.fromJson(categoryJson)
+          : null,
+      attachments: atts,
     );
   }
 
+  /// Para POST/PUT según tu API:
+  /// amount, type, category_id, account_id, date, note (opc)
+  /// attachment_ids (si lo manejas) lo mandas desde el provider, no desde el modelo.
   Map<String, dynamic> toJson() {
     return {
-      "created_by": createdBy,
       "type": type,
       "amount": amount,
-      "total_debt": totalDebt,
-      "date": date.toIso8601String(),
-      "note": note,
+      "account_id": accountId,
       "category_id": categoryId,
-      "goal_id": goalId,
-      "status_id": statusId,
-      "is_recurring": isRecurring ? 1 : 0,
-      "recurring_interval_days": recurringIntervalDays,
+      "date": _toApiDate(date), // "YYYY-MM-DD"
+      "note": note,
     };
+  }
+
+  static String _toApiDate(DateTime d) {
+    final y = d.year.toString().padLeft(4, '0');
+    final m = d.month.toString().padLeft(2, '0');
+    final day = d.day.toString().padLeft(2, '0');
+    return "$y-$m-$day";
+  }
+}
+
+/// Minis para relaciones (lo que tu API retorna: id, name, type)
+class AccountMini {
+  final int id;
+  final String name;
+
+  AccountMini({required this.id, required this.name});
+
+  factory AccountMini.fromJson(Map<String, dynamic> json) {
+    return AccountMini(
+      id: int.tryParse(json['id']?.toString() ?? '') ?? 0,
+      name: (json['name'] ?? '').toString(),
+    );
+  }
+}
+
+class CategoryMini {
+  final int id;
+  final String name;
+  final String type; // income | expense
+
+  CategoryMini({required this.id, required this.name, required this.type});
+
+  factory CategoryMini.fromJson(Map<String, dynamic> json) {
+    return CategoryMini(
+      id: int.tryParse(json['id']?.toString() ?? '') ?? 0,
+      name: (json['name'] ?? '').toString(),
+      type: (json['type'] ?? '').toString(),
+    );
+  }
+}
+
+class TransactionAttachment {
+  final int id;
+  final String path;
+
+  TransactionAttachment({required this.id, required this.path});
+
+  factory TransactionAttachment.fromJson(Map<String, dynamic> json) {
+    return TransactionAttachment(
+      id: int.tryParse(json['id']?.toString() ?? '') ?? 0,
+      path: (json['path'] ?? '').toString(),
+    );
   }
 }

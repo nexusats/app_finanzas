@@ -33,11 +33,11 @@ class TransactionsProvider extends ChangeNotifier {
       .fold(0.0, (sum, t) => sum + t.amount);
 
   double getTotalExpenses() => _transactions
-      .where((t) => t.type == "expense" && t.statusId != 8)
+      .where((t) => t.type == "expense")
       .fold(0.0, (sum, t) => sum + t.amount);
 
   double getTotalDebt() => _transactions
-      .where((t) => t.type == "expense" && t.statusId == 8)
+      .where((t) => t.type == "expense")
       .fold(0.0, (sum, t) => sum + t.amount);
 
   double getBalance() => getTotalIncomes() - getTotalExpenses();
@@ -50,10 +50,7 @@ class TransactionsProvider extends ChangeNotifier {
     String type, {
     List<int> statusIds = const [8, 9],
   }) {
-    return _transactions.where((transaction) {
-      return transaction.type == type &&
-          statusIds.contains(transaction.statusId);
-    }).toList();
+    return _transactions.toList();
   }
 
   // ----------------------

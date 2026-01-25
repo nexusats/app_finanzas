@@ -9,7 +9,6 @@ import 'package:app_finanzas/app/model/transaction.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:app_finanzas/app/services/get_selects_service.dart';
 import 'package:app_finanzas/app/controller/transactions_provider.dart';
-import 'package:app_finanzas/screen/transaction/transaction_detail_screen.dart';
 
 class TransactionScreen extends StatefulWidget {
   final bool showAppBar;
@@ -17,40 +16,50 @@ class TransactionScreen extends StatefulWidget {
   const TransactionScreen({super.key, this.showAppBar = true});
 
   @override
-  TransactionScreenState createState() => TransactionScreenState();
+  State<TransactionScreen> createState() => TransactionScreenState();
 }
 
 class TransactionScreenState extends State<TransactionScreen> {
-  late Future<Map<String, dynamic>> _dataFuture;
+  late Future<Map<String, dynamic>> _metaFuture;
 
   @override
   void initState() {
     super.initState();
-    _dataFuture = _loadData();
+    _metaFuture = _loadMeta();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<TransactionsProvider>().fetchTransactions();
+    });
   }
 
-  Future<Map<String, dynamic>> _loadData() async {
-    // mantenemos por compatibilidad si lo necesitas en el futuro
-    return await GetSelectsService.fetchData(['statuses']);
+  Future<Map<String, dynamic>> _loadMeta() async {
+    // Reusa tus resources existentes:
+    // GET /accounts  y GET /categories
+    // Ajusta GetSelectsService para que devuelva:
+    // { "accounts": [...], "categories": [...] }
+    final data = await GetSelectsService.fetchData(['accounts', 'categories']);
+    return {
+      'accounts': (data['accounts'] ?? []) as List<dynamic>,
+      'categories': (data['categories'] ?? []) as List<dynamic>,
+    };
   }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<Map<String, dynamic>>(
-      future: _dataFuture,
+      future: _metaFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return _buildLoadingState();
         }
-
         if (snapshot.hasError) {
           return _buildErrorState();
         }
 
-        final data = snapshot.data ?? {};
-        final statuses = data['statuses'] ?? [];
+        final meta = snapshot.data ?? const {};
+        final accounts = (meta['accounts'] ?? []) as List<dynamic>;
+        final categories = (meta['categories'] ?? []) as List<dynamic>;
 
-        return _buildContent(context, statuses);
+        return _buildContent(context, accounts, categories);
       },
     );
   }
@@ -67,18 +76,45 @@ class TransactionScreenState extends State<TransactionScreen> {
           ),
         ),
         padding: const EdgeInsets.all(14),
-        child: const Center(
-          child: CircularProgressIndicator(),
-        ),
+        child: const Center(child: CircularProgressIndicator()),
       ),
     );
   }
 
   Widget _buildErrorState() {
-    return const Center(child: Text('Error al cargar los datos'));
+    return Scaffold(
+      backgroundColor: ConfigGlobal.backgroundColor,
+      body: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(32),
+            topRight: Radius.circular(32),
+          ),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Error al cargar datos del formulario'),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: () => setState(() => _metaFuture = _loadMeta()),
+                child: const Text('Reintentar'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
-  Widget _buildContent(BuildContext context, List<dynamic> statuses) {
+  Widget _buildContent(
+    BuildContext context,
+    List<dynamic> accounts,
+    List<dynamic> categories,
+  ) {
     return Scaffold(
       appBar: _buildAppBar(),
       backgroundColor: ConfigGlobal.backgroundColor,
@@ -93,14 +129,14 @@ class TransactionScreenState extends State<TransactionScreen> {
         padding: const EdgeInsets.all(16),
         child: _buildTransactionList(),
       ),
-      floatingActionButton: _buildFloatingActionButtons(),
+      floatingActionButton: _buildFloatingActionButtons(accounts, categories),
     );
   }
 
   PreferredSizeWidget? _buildAppBar() {
     return widget.showAppBar
         ? AppBar(
-            title: const Text("Transacciones"),
+            title: const Text("Movimientos"),
             backgroundColor: ConfigGlobal.backgroundColor,
             foregroundColor: Colors.white,
             actions: [
@@ -125,20 +161,22 @@ class TransactionScreenState extends State<TransactionScreen> {
 
   Widget _buildLoadingSkeleton() {
     return ListView.builder(
-      padding: const EdgeInsets.all(20),
-      itemCount: 5,
+      padding: const EdgeInsets.all(12),
+      itemCount: 6,
       itemBuilder: (context, index) => Shimmer.fromColors(
         baseColor: Colors.grey[300]!,
         highlightColor: Colors.grey[100]!,
         child: Card(
-          elevation: 3,
-          margin: const EdgeInsets.symmetric(vertical: 10),
+          elevation: 2,
+          margin: const EdgeInsets.symmetric(vertical: 8),
           child: ListTile(
             leading: Container(width: 40, height: 40, color: Colors.white),
             title: Container(
-                width: double.infinity, height: 16, color: Colors.white),
-            subtitle: Container(width: 100, height: 14, color: Colors.white),
-            trailing: Container(width: 20, height: 20, color: Colors.white),
+              width: double.infinity,
+              height: 16,
+              color: Colors.white,
+            ),
+            subtitle: Container(width: 120, height: 14, color: Colors.white),
           ),
         ),
       ),
@@ -146,104 +184,49 @@ class TransactionScreenState extends State<TransactionScreen> {
   }
 
   Widget _buildEmptyState() {
-    return const Center(child: Text("No hay transacciones disponibles"));
+    return const Center(child: Text("No hay movimientos todavía"));
   }
 
   Widget _buildTransactionsListView(List<Transaction> transactions) {
     return ListView.builder(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(12),
       itemCount: transactions.length,
       itemBuilder: (context, index) =>
           _buildTransactionItem(transactions[index]),
     );
   }
 
-  Widget _buildTransactionItem(Transaction transaction) {
+  Widget _buildTransactionItem(Transaction t) {
+    final icon = t.type == 'income'
+        ? Icons.arrow_downward_rounded
+        : Icons.arrow_upward_rounded;
+    final color = t.type == 'income' ? Colors.green : Colors.red;
+
     return Card(
-      elevation: 3,
-      margin: const EdgeInsets.symmetric(vertical: 10),
+      elevation: 2,
+      margin: const EdgeInsets.symmetric(vertical: 8),
       child: ListTile(
-        leading: Icon(
-          _iconForType(transaction.type),
-          color: _colorForType(transaction.type),
-        ),
-        title: Text(transaction.note ?? ''),
+        leading: Icon(icon, color: color),
+        title: Text((t.note ?? '').isEmpty ? 'Sin nota' : t.note!),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Monto: \$${transaction.amount.toStringAsFixed(2)}"),
-            Text("Fecha: ${DateFormat('dd/MM/yyyy').format(transaction.date)}"),
+            Text("Monto: \$${t.amount.toStringAsFixed(2)}"),
+            Text("Fecha: ${DateFormat('dd/MM/yyyy').format(t.date)}"),
           ],
         ),
         trailing: IconButton(
-          icon: Icon(Icons.edit),
-          onPressed: () => _openEditModal(transaction),
+          icon: const Icon(Icons.edit),
+          onPressed: () => _openEditModal(t),
         ),
-        // trailing: IconButton(
-        //   icon: const Icon(Icons.arrow_forward_ios, size: 16),
-        //   onPressed: () => _navigateToDetail(transaction.id!),
-        // ),
       ),
     );
   }
 
-  void _openEditModal(Transaction t) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: ConfigGlobal.backgroundSecondColor,
-      builder: (context) {
-        return DraggableScrollableSheet(
-          expand: false,
-          initialChildSize: 0.85,
-          minChildSize: 0.4,
-          maxChildSize: 0.95,
-          builder: (_, scrollController) {
-            return SingleChildScrollView(
-              controller: scrollController,
-              child: TransactionFormModal(transaction: t),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  IconData _iconForType(String t) {
-    switch (t) {
-      case 'income':
-        return Icons.arrow_downward;
-      case 'expense':
-        return Icons.arrow_upward;
-      case 'saving':
-        return Icons.savings;
-      case 'debt_in':
-        return Icons.call_received;
-      case 'debt_on':
-        return Icons.call_made;
-      default:
-        return Icons.help_outline;
-    }
-  }
-
-  Color _colorForType(String t) {
-    switch (t) {
-      case 'income':
-        return Colors.green;
-      case 'expense':
-        return Colors.red;
-      case 'saving':
-        return Colors.blue;
-      case 'debt_in':
-        return Colors.orange;
-      case 'debt_on':
-        return Colors.purple;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  Widget _buildFloatingActionButtons() {
+  Widget _buildFloatingActionButtons(
+    List<dynamic> accounts,
+    List<dynamic> categories,
+  ) {
     return SpeedDial(
       icon: Icons.menu,
       activeIcon: Icons.close,
@@ -263,30 +246,24 @@ class TransactionScreenState extends State<TransactionScreen> {
           child: const Icon(Icons.add, color: Colors.white),
           backgroundColor: ConfigGlobal.backgroundColor,
           label: 'Agregar',
-          onTap: _showAddTransactionModal,
+          onTap: () => _showAddTransactionModal(accounts, categories),
         ),
       ],
     );
   }
 
   void _refreshTransactions() {
-    Provider.of<TransactionsProvider>(context, listen: false)
-        .fetchTransactions();
+    context.read<TransactionsProvider>().fetchTransactions();
   }
 
-  void _navigateToDetail(int transactionId) async {
-    await Provider.of<TransactionsProvider>(context, listen: false)
-        .fetchTransactionById(transactionId);
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) =>
-            TransactionDetailScreen(transactionId: transactionId),
-      ),
-    );
-  }
+  void _openEditModal(Transaction t) async {
+    // Reusa el meta ya cargado para no pedirlo otra vez
+    final meta = await _metaFuture;
+    final accounts = (meta['accounts'] ?? []) as List<dynamic>;
+    final categories = (meta['categories'] ?? []) as List<dynamic>;
 
-  void _showAddTransactionModal() {
+    if (!mounted) return;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -300,7 +277,39 @@ class TransactionScreenState extends State<TransactionScreen> {
           builder: (_, scrollController) {
             return SingleChildScrollView(
               controller: scrollController,
-              child: TransactionFormModal(),
+              child: TransactionFormModal(
+                transaction: t,
+                accounts: accounts,
+                categories: categories,
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showAddTransactionModal(
+    List<dynamic> accounts,
+    List<dynamic> categories,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: ConfigGlobal.backgroundSecondColor,
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.85,
+          minChildSize: 0.4,
+          maxChildSize: 0.95,
+          builder: (_, scrollController) {
+            return SingleChildScrollView(
+              controller: scrollController,
+              child: TransactionFormModal(
+                accounts: accounts,
+                categories: categories,
+              ),
             );
           },
         );
@@ -310,43 +319,45 @@ class TransactionScreenState extends State<TransactionScreen> {
 }
 
 /* -------------------------------------------------------------------------- */
-/*                  Transaction Form Modal (actualizado)                      */
-/* -------------------------------------------------------------------------- */
+/*                 Transaction Form Modal (API resource real)                 */
+/*  Campos necesarios según tu API:
+    - amount (required)
+    - type (income|expense) (required)
+    - account_id (required)
+    - category_id (required, del mismo type)
+    - date (required)
+    - note (optional)
+   -------------------------------------------------------------------------- */
 
 class TransactionFormModal extends StatefulWidget {
   final Transaction? transaction;
+  final List<dynamic> accounts; // [{id,name,...}]
+  final List<dynamic> categories; // [{id,name,type,...}]
 
-  const TransactionFormModal({super.key, this.transaction});
+  const TransactionFormModal({
+    super.key,
+    this.transaction,
+    required this.accounts,
+    required this.categories,
+  });
 
   @override
-  TransactionFormModalState createState() => TransactionFormModalState();
+  State<TransactionFormModal> createState() => TransactionFormModalState();
 }
 
 class TransactionFormModalState extends State<TransactionFormModal> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
-  final _recurringDaysController = TextEditingController();
 
   DateTime _selectedDate = DateTime.now();
-  String _selectedType = 'income'; // income, expense, saving, debt_in, debt_on
-  String? _selectedStatus;
-  String? _selectedCategory;
-  String? _selectedGoal;
+  String _selectedType = 'expense'; // por defecto gasto
+  String? _selectedAccountId;
+  String? _selectedCategoryId;
 
-  bool _isRecurring = false;
-
-  late Future<List<dynamic>> _statusesFuture;
-  late Future<List<dynamic>> _categoriesFuture;
-  late Future<List<dynamic>> _goalsFuture;
-
-  // Map para mostrar nombres legibles de tipos
-  final Map<String, String> _typeLabels = {
+  final Map<String, String> _typeLabels = const {
     'income': 'Ingreso',
     'expense': 'Gasto',
-    'saving': 'Ahorro',
-    'debt_in': 'Deuda (Préstamos realizados)',
-    'debt_on': 'Deuda (Préstamos recibidos)',
   };
 
   @override
@@ -354,93 +365,88 @@ class TransactionFormModalState extends State<TransactionFormModal> {
     super.initState();
 
     final t = widget.transaction;
-
     if (t != null) {
       _selectedType = t.type;
       _selectedDate = t.date;
-      _amountController.text = t.amount.toString();
+      _amountController.text = t.amount.toStringAsFixed(2);
       _noteController.text = t.note ?? '';
-      _selectedStatus = t.statusId.toString();
-      _selectedCategory = t.categoryId?.toString();
-      _selectedGoal = t.goalId?.toString();
-      _isRecurring = t.isRecurring;
-      _recurringDaysController.text = t.recurringIntervalDays?.toString() ?? '';
+      _selectedAccountId = t.accountId?.toString();
+      _selectedCategoryId = t.categoryId?.toString();
+    } else {
+      // defaults si hay data
+      if (widget.accounts.isNotEmpty) {
+        _selectedAccountId = "${widget.accounts.first['id']}";
+      }
     }
 
-    _statusesFuture = _loadStatuses();
-    _categoriesFuture = _loadCategories();
-    _goalsFuture = _loadGoals();
+    // si la categoría no es del tipo actual, la limpiamos
+    _sanitizeCategoryByType();
   }
 
-  Future<List<dynamic>> _loadStatuses() async {
-    final data = await GetSelectsService.fetchData(['statuses']);
-    return data['statuses'] ?? [];
+  void _sanitizeCategoryByType() {
+    if (_selectedCategoryId == null) return;
+    final cat = widget.categories.firstWhere(
+      (c) => "${c['id']}" == _selectedCategoryId,
+      orElse: () => null,
+    );
+    if (cat == null || (cat['type']?.toString() ?? '') != _selectedType) {
+      _selectedCategoryId = null;
+    }
   }
 
-  Future<List<dynamic>> _loadCategories() async {
-    final data = await GetSelectsService.fetchData(['categories']);
-    return data['categories'] ?? [];
-  }
-
-  Future<List<dynamic>> _loadGoals() async {
-    final data = await GetSelectsService.fetchData(['goals']);
-    return data['goals'] ?? [];
+  List<dynamic> _categoriesForSelectedType() {
+    return widget.categories
+        .where((c) => (c['type']?.toString() ?? '') == _selectedType)
+        .toList();
   }
 
   @override
   void dispose() {
     _amountController.dispose();
     _noteController.dispose();
-    _recurringDaysController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final isEditing = widget.transaction != null;
+
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
-      child: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildHeader(),
-                const SizedBox(height: 20),
-                _buildTypeDropdown(),
-                const SizedBox(height: 15),
-                _buildDateSelector(),
-                const SizedBox(height: 15),
-                _buildAmountField(),
-                const SizedBox(height: 15),
-                _buildConditionalFields(),
-                const SizedBox(height: 15),
-                _buildStatusDropdown(),
-                const SizedBox(height: 15),
-                _buildNoteField(),
-                const SizedBox(height: 15),
-                _buildRecurringField(),
-                const SizedBox(height: 25),
-                _buildSubmitButton(),
-              ],
-            ),
+      child: Form(
+        key: _formKey,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                isEditing ? 'Editar movimiento' : 'Agregar movimiento',
+                style: TextStyle(
+                  fontSize: ConfigGlobal.sizeTitle,
+                  fontWeight: FontWeight.bold,
+                  color: ConfigGlobal.backgroundColor,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildTypeDropdown(),
+              const SizedBox(height: 12),
+              _buildDateSelector(),
+              const SizedBox(height: 12),
+              _buildAmountField(),
+              const SizedBox(height: 12),
+              _buildAccountDropdown(),
+              const SizedBox(height: 12),
+              _buildCategoryDropdown(),
+              const SizedBox(height: 12),
+              _buildNoteField(),
+              const SizedBox(height: 18),
+              _buildSubmitButton(isEditing),
+            ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Text(
-      widget.transaction == null ? 'Agregar transacción' : 'Editar transacción',
-      style: TextStyle(
-        fontSize: ConfigGlobal.sizeTitle,
-        fontWeight: FontWeight.bold,
-        color: ConfigGlobal.backgroundColor,
       ),
     );
   }
@@ -449,11 +455,16 @@ class TransactionFormModalState extends State<TransactionFormModal> {
     return DropdownButtonFormField<String>(
       value: _selectedType,
       decoration: const InputDecoration(
-        labelText: "Tipo de Transacción",
+        labelText: "Tipo",
         border: OutlineInputBorder(),
       ),
-      validator: (value) => value == null ? 'Seleccione un tipo' : null,
-      onChanged: (value) => setState(() => _selectedType = value!),
+      onChanged: (value) {
+        if (value == null) return;
+        setState(() {
+          _selectedType = value;
+          _selectedCategoryId = null; // cambia tipo => cambia catálogo
+        });
+      },
       items: _typeLabels.entries
           .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
           .toList(),
@@ -461,10 +472,21 @@ class TransactionFormModalState extends State<TransactionFormModal> {
   }
 
   Widget _buildDateSelector() {
-    return ListTile(
-      title: Text(DateFormat('dd/MM/yyyy').format(_selectedDate)),
-      trailing: const Icon(Icons.calendar_today),
+    return InkWell(
       onTap: _selectDate,
+      child: InputDecorator(
+        decoration: const InputDecoration(
+          labelText: "Fecha",
+          border: OutlineInputBorder(),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+                child: Text(DateFormat('dd/MM/yyyy').format(_selectedDate))),
+            const Icon(Icons.calendar_today),
+          ],
+        ),
+      ),
     );
   }
 
@@ -492,31 +514,56 @@ class TransactionFormModalState extends State<TransactionFormModal> {
         border: OutlineInputBorder(),
         prefixIcon: Icon(Icons.attach_money),
       ),
-      validator: _validateAmount,
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) return 'Ingrese un monto';
+        final amount = double.tryParse(value);
+        if (amount == null) return 'Monto inválido';
+        if (amount <= 0) return 'El monto debe ser mayor a 0';
+        return null;
+      },
     );
   }
 
-  String? _validateAmount(String? value) {
-    if (value == null || value.isEmpty) return 'Ingrese un monto';
-    final amount = double.tryParse(value);
-    if (amount == null) return 'Monto inválido';
-    if (amount <= 0) return 'Monto debe ser positivo';
-    return null;
+  Widget _buildAccountDropdown() {
+    return DropdownButtonFormField<String>(
+      value: _selectedAccountId,
+      decoration: const InputDecoration(
+        labelText: "Cuenta",
+        border: OutlineInputBorder(),
+      ),
+      validator: (v) =>
+          (v == null || v.isEmpty) ? 'Seleccione una cuenta' : null,
+      onChanged: (v) => setState(() => _selectedAccountId = v),
+      items: widget.accounts.map<DropdownMenuItem<String>>((a) {
+        return DropdownMenuItem<String>(
+          value: "${a['id']}",
+          child: Text(a['name']?.toString() ?? 'Sin nombre'),
+        );
+      }).toList(),
+    );
   }
 
-  Widget _buildConditionalFields() {
-    // expense -> categories
-    // saving, debt_in, debt_on -> goals
-    if (_selectedType == 'expense') {
-      return _buildCategoriesDropdown();
-    }
-    if (_selectedType == 'saving' ||
-        _selectedType == 'debt_in' ||
-        _selectedType == 'debt_on') {
-      return _buildGoalsDropdown();
-    }
-    // income -> nothing special
-    return const SizedBox.shrink();
+  Widget _buildCategoryDropdown() {
+    final cats = _categoriesForSelectedType();
+
+    return DropdownButtonFormField<String>(
+      value: _selectedCategoryId,
+      decoration: InputDecoration(
+        labelText: _selectedType == 'income'
+            ? "Categoría (Ingreso)"
+            : "Categoría (Gasto)",
+        border: const OutlineInputBorder(),
+      ),
+      validator: (v) =>
+          (v == null || v.isEmpty) ? 'Seleccione una categoría' : null,
+      onChanged: (v) => setState(() => _selectedCategoryId = v),
+      items: cats.map<DropdownMenuItem<String>>((c) {
+        return DropdownMenuItem<String>(
+          value: "${c['id']}",
+          child: Text(c['name']?.toString() ?? 'Sin nombre'),
+        );
+      }).toList(),
+    );
   }
 
   Widget _buildNoteField() {
@@ -524,157 +571,61 @@ class TransactionFormModalState extends State<TransactionFormModal> {
       controller: _noteController,
       maxLines: 3,
       decoration: const InputDecoration(
-        labelText: 'Nota',
+        labelText: 'Nota (opcional)',
         border: OutlineInputBorder(),
       ),
-      validator: (value) =>
-          (value == null || value.isEmpty) ? 'Ingrese una nota' : null,
-    );
-  }
-
-  Widget _buildRecurringField() {
-    return Column(
-      children: [
-        SwitchListTile(
-          title: const Text('Recurrente'),
-          value: _isRecurring,
-          onChanged: (v) => setState(() => _isRecurring = v),
-        ),
-        if (_isRecurring)
-          TextFormField(
-            controller: _recurringDaysController,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: 'Intervalo (días)',
-              border: OutlineInputBorder(),
-            ),
-            validator: (v) {
-              if (!_isRecurring) return null;
-              if (v == null || v.isEmpty) return 'Ingrese intervalo';
-              final n = int.tryParse(v);
-              if (n == null || n <= 0) return 'Intervalo inválido';
-              return null;
-            },
-          ),
-      ],
-    );
-  }
-
-  Widget _buildStatusDropdown() {
-    return _buildDropdown(
-      future: _statusesFuture,
-      label: "Estado",
-      value: _selectedStatus,
-      onChanged: (value) => setState(() => _selectedStatus = value),
-    );
-  }
-
-  Widget _buildCategoriesDropdown() {
-    return _buildDropdown(
-      future: _categoriesFuture,
-      label: "Categoría",
-      value: _selectedCategory,
-      onChanged: (value) => setState(() => _selectedCategory = value),
-    );
-  }
-
-  Widget _buildGoalsDropdown() {
-    return _buildDropdown(
-      future: _goalsFuture,
-      label: "Objetivo",
-      value: _selectedGoal,
-      onChanged: (value) => setState(() => _selectedGoal = value),
-    );
-  }
-
-  Widget _buildDropdown({
-    required Future<List<dynamic>> future,
-    required String label,
-    required String? value,
-    required ValueChanged<String?> onChanged,
-  }) {
-    return FutureBuilder<List<dynamic>>(
-      future: future,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const CircularProgressIndicator();
-        }
-
-        if (snapshot.hasError) {
-          return Text('Error al cargar $label');
-        }
-
-        final items = snapshot.data ?? [];
-
-        return DropdownButtonFormField<String>(
-          value: value,
-          decoration: InputDecoration(
-            labelText: label,
-            border: const OutlineInputBorder(),
-          ),
-          onChanged: onChanged,
-          items: items.map<DropdownMenuItem<String>>((dynamic item) {
-            return DropdownMenuItem<String>(
-              value: "${item['id']}",
-              child: Text(item['label'] ?? item['name'] ?? 'Sin nombre'),
-            );
-          }).toList(),
-        );
+      validator: (v) {
+        if (v == null) return null;
+        if (v.length > 500) return 'Máximo 500 caracteres';
+        return null;
       },
     );
   }
 
-  Widget _buildSubmitButton() {
+  Widget _buildSubmitButton(bool isEditing) {
     return ElevatedButton(
       onPressed: _submitForm,
       style: ElevatedButton.styleFrom(
         minimumSize: const Size(double.infinity, 50),
       ),
-      child: Text(
-        widget.transaction == null
-            ? "Guardar Transacción"
-            : "Actualizar Transacción",
-      ),
+      child: Text(isEditing ? "Actualizar" : "Guardar"),
     );
   }
 
   void _submitForm() {
     if (!_formKey.currentState!.validate()) return;
 
-    final amountParsed = double.tryParse(_amountController.text);
-
+    final amountParsed = double.tryParse(_amountController.text.trim());
     if (amountParsed == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Monto inválido')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Monto inválido')),
+      );
       return;
     }
 
     final isEditing = widget.transaction != null;
 
-    final transaction = Transaction(
-      id: isEditing
-          ? widget.transaction!.id
-          : DateTime.now().millisecondsSinceEpoch,
+    final tx = Transaction(
+      id: isEditing ? widget.transaction!.id : null,
       type: _selectedType,
       amount: amountParsed,
-      statusId: int.tryParse(_selectedStatus!)!,
       date: _selectedDate,
-      note: _noteController.text.trim(),
-      categoryId:
-          _selectedCategory != null ? int.tryParse(_selectedCategory!) : null,
-      goalId: _selectedGoal != null ? int.tryParse(_selectedGoal!) : null,
-      isRecurring: _isRecurring,
-      recurringIntervalDays:
-          _isRecurring ? int.tryParse(_recurringDaysController.text) : null,
-      files: widget.transaction?.files ?? [],
+      note: _noteController.text.trim().isEmpty
+          ? null
+          : _noteController.text.trim(),
+      accountId: int.parse(_selectedAccountId!),
+      categoryId: int.parse(_selectedCategoryId!),
+
+      // Mantén lo demás como estaba en tu modelo si existe, pero no lo uses para API
+      // files: widget.transaction?.files ?? const [],
     );
 
     final provider = context.read<TransactionsProvider>();
 
     if (isEditing) {
-      provider.updateTransaction(context, transaction);
+      provider.updateTransaction(context, tx);
     } else {
-      provider.addTransaction(context, transaction);
+      provider.addTransaction(context, tx);
     }
 
     Navigator.pop(context);

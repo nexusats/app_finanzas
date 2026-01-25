@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class CategoryService {
   final String baseUrl = dotenv.env['API_BASE_URL'] ?? "";
-  final String module = "expenses-categories";
+  final String module = "categories";
 
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
