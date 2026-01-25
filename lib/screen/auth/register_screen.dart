@@ -15,6 +15,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final _usernameController = TextEditingController();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -22,6 +24,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void dispose() {
     _usernameController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -34,12 +38,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final password = _passwordController.text.trim();
       final passwordConfirmation = _confirmPasswordController.text.trim();
       final username = _usernameController.text.trim();
+      final firstName = _firstNameController.text.trim();
+      final lastName = _lastNameController.text.trim();
 
       final userData = {
         "email": email,
         "password": password,
         "password_confirmation": passwordConfirmation,
         "username": username,
+        "firstname": firstName,
+        "lastname": lastName,
       };
 
       context.read<AuthProvider>().register(context, userData);
@@ -62,11 +70,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 30),
-              LoginField(
+              /* LoginField(
                 hintText: "Username",
                 controller: _usernameController,
                 validator: (value) => value == null || value.isEmpty
                     ? "Username is required"
+                    : null,
+              ),
+              const SizedBox(height: 16), */
+              LoginField(
+                hintText: "First Name",
+                controller: _firstNameController,
+                validator: (value) => value == null || value.isEmpty
+                    ? "First Name is required"
+                    : null,
+              ),
+              const SizedBox(height: 16),
+              LoginField(
+                hintText: "Last Name",
+                controller: _lastNameController,
+                validator: (value) => value == null || value.isEmpty
+                    ? "Last Name is required"
                     : null,
               ),
               const SizedBox(height: 16),

@@ -1,14 +1,17 @@
-import 'package:shimmer/shimmer.dart';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:app_finanzas/config/global.dart';
-import 'package:app_finanzas/config/format_utils.dart';
-import 'package:app_finanzas/app/model/transaction.dart';
 import 'package:app_finanzas/screen/auth/login_screen.dart';
 import 'package:app_finanzas/app/controller/auth_provider.dart';
 import 'package:app_finanzas/app/controller/transactions_provider.dart';
 import 'package:app_finanzas/screen/category/category_list_screen.dart';
 import 'package:app_finanzas/screen/transaction/transaction_screen.dart';
+
+// Si ya tienes GetSelectsService úsalo. Aquí lo dejo como placeholder:
+import 'package:app_finanzas/app/services/get_selects_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,17 +22,55 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+  late Future<_HomeMeta> _metaFuture;
 
   void _onItemTapped(int index) => setState(() => _selectedIndex = index);
+
+  @override
+  void initState() {
+    super.initState();
+    _metaFuture = _loadMeta();
+
+    // Mantén esto si tu app lo necesita para otras pantallas
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<TransactionsProvider>().fetchTransactions();
+    });
+  }
+
+  Future<_HomeMeta> _loadMeta() async {
+    // Recomendado con tu endpoint:
+    // GET /api/v1/getData?fields=["accounts","categories"]
+    final raw = await GetSelectsService.fetchData(['accounts', 'categories']);
+
+    // Algunos services devuelven {data:{...}}; otros directo.
+    final Map<String, dynamic> json = raw is Map<String, dynamic>
+        ? raw
+        : jsonDecode(raw.toString()) as Map<String, dynamic>;
+
+    final accountsJson =
+        (json['accounts'] ?? json['data']?['accounts'] ?? []) as List;
+    final categoriesJson =
+        (json['categories'] ?? json['data']?['categories'] ?? []) as List;
+
+    final accounts = accountsJson
+        .whereType<Map<String, dynamic>>()
+        .map(AccountMeta.fromJson)
+        .toList();
+
+    final categories = categoriesJson
+        .whereType<Map<String, dynamic>>()
+        .map(CategoryMeta.fromJson)
+        .toList();
+
+    return _HomeMeta(accounts: accounts, categories: categories);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Selector<AuthProvider, bool>(
       selector: (_, auth) => auth.isAuthenticated,
       builder: (context, isAuthenticated, _) {
-        if (!isAuthenticated) {
-          return const LoginScreen();
-        }
+        if (!isAuthenticated) return const LoginScreen();
 
         final screens = <Widget>[
           _buildHomeScreen(),
@@ -97,9 +138,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHomeScreen() {
-    return Consumer<TransactionsProvider>(
-      builder: (context, txProvider, _) {
-        final isLoading = txProvider.isLoading;
+    return FutureBuilder<_HomeMeta>(
+      future: _metaFuture,
+      builder: (context, snap) {
+        final isLoading = snap.connectionState == ConnectionState.waiting;
 
         return Container(
           decoration: const BoxDecoration(
@@ -120,140 +162,83 @@ class _HomeScreenState extends State<HomeScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: () async {
-                    // Mantén tu lógica en el provider (API /v1/summary y /v1/transactions?month=YYYY-MM).
-                    // Aquí solo disparamos el refresh si ya tienes ese método.
-                    if (txProvider is dynamic &&
-                        (txProvider as dynamic).refresh != null) {
-                      await (txProvider as dynamic).refresh();
-                    }
+                    setState(() => _metaFuture = _loadMeta());
+                    // si también quieres refrescar movimientos, deja esto:
+                    context.read<TransactionsProvider>().fetchTransactions();
+                    await _metaFuture;
                   },
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // ---- CUENTAS (cards) ----
                         if (isLoading)
                           SizedBox(
-                            height: 150,
+                            height: 90,
                             child: ListView.separated(
                               scrollDirection: Axis.horizontal,
                               itemCount: 3,
                               separatorBuilder: (_, __) =>
                                   const SizedBox(width: 12),
-                              itemBuilder: (_, __) =>
-                                  buildFinanceCardSkeleton(),
+                              itemBuilder: (_, __) => _accountCardSkeleton(),
                             ),
                           )
-                        else
+                        else if (snap.hasError)
+                          _errorBox(
+                            'Error al cargar cuentas',
+                            onRetry: () =>
+                                setState(() => _metaFuture = _loadMeta()),
+                          )
+                        else ...[
+                          const Text(
+                            "Cuentas",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 10),
                           SizedBox(
-                            height: 80,
+                            height: 90,
                             child: ListView.separated(
                               scrollDirection: Axis.horizontal,
-                              itemCount: 5,
+                              itemCount: snap.data!.accounts.length,
                               separatorBuilder: (_, __) =>
                                   const SizedBox(width: 12),
                               itemBuilder: (context, index) {
-                                final items = [
-                                  {
-                                    "title": "Libertad Financiera",
-                                    "amount": txProvider.getTotalDebt(),
-                                    "icon": Icons.lock_open_rounded,
-                                    "color": Colors.deepOrangeAccent,
-                                  },
-                                  {
-                                    "title": "Gastos Conscientes",
-                                    "amount": txProvider.getTotalExpenses(),
-                                    "icon":
-                                        Icons.account_balance_wallet_outlined,
-                                    "color": Colors.orangeAccent,
-                                  },
-                                  {
-                                    "title": "Prosperidad",
-                                    "amount": txProvider.getTotalIncomes(),
-                                    "icon": Icons.trending_up_rounded,
-                                    "color": Colors.teal,
-                                  },
-                                  {
-                                    "title": "Capital Semilla",
-                                    "amount": txProvider.getTotalSavings(),
-                                    "icon": Icons.savings_rounded,
-                                    "color": Colors.indigoAccent,
-                                  },
-                                  {
-                                    "title": "Balance",
-                                    "amount": txProvider.getBalance(),
-                                    "icon": Icons.auto_graph_rounded,
-                                    "color": Colors.deepPurpleAccent,
-                                  },
-                                ];
-
-                                final item = items[index];
-                                return _buildFinanceCard(
-                                  item["title"] as String,
-                                  item["amount"] as double,
-                                  item["icon"] as IconData,
-                                  item["color"] as Color,
-                                );
+                                final a = snap.data!.accounts[index];
+                                return _buildAccountCard(a);
                               },
-                            ),
-                          ),
-                        if (isLoading) ...[
-                          const SizedBox(height: 20),
-                          SizedBox(
-                            height: 150,
-                            child: ListView.separated(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: 3,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(width: 12),
-                              itemBuilder: (_, __) =>
-                                  buildFinanceCardSkeleton(),
                             ),
                           ),
                         ],
-                        if (isLoading) ...[
-                          const SizedBox(height: 20),
-                          SizedBox(
-                            height: 150,
-                            child: ListView.separated(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: 3,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(width: 12),
-                              itemBuilder: (_, __) =>
-                                  buildFinanceCardSkeleton(),
-                            ),
-                          ),
-                        ] else if (txProvider
-                            .getTransactionsByType("expense")
-                            .isNotEmpty) ...[
-                          const SizedBox(height: 24),
+
+                        const SizedBox(height: 18),
+
+                        // ---- CATEGORÍAS (chips simples) ----
+                        if (!isLoading && snap.hasData) ...[
                           const Text(
-                            "Estado de las deudas",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                            ),
+                            "Categorías",
+                            style: TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            height: 120,
-                            child: ListView.separated(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: txProvider
-                                  .getTransactionsByType("expense")
-                                  .length,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(width: 12),
-                              itemBuilder: (context, index) {
-                                final debt = txProvider
-                                    .getTransactionsByType("expense")[index];
-                                return _buildDebtCard(debt);
-                              },
-                            ),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              _buildChip(
+                                icon: Icons.trending_up_rounded,
+                                label: "Ingresos",
+                                value: snap.data!.incomeCount.toString(),
+                              ),
+                              _buildChip(
+                                icon: Icons.trending_down_rounded,
+                                label: "Gastos",
+                                value: snap.data!.expenseCount.toString(),
+                              ),
+                            ],
                           ),
                         ],
                       ],
@@ -268,65 +253,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildDebtCard(Transaction transaction) {
-    return Container(
-      width: 200,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.deepOrangeAccent.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.deepOrangeAccent.withOpacity(0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.warning_amber_rounded,
-                  color: Colors.deepOrangeAccent),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  transaction.note ?? "Sin descripción",
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            formatCurrency(transaction.amount),
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.deepOrangeAccent,
-            ),
-          ),
-          // Text(
-          //   formatCurrency(transaction.totalDebt ?? 0),
-          //   style: TextStyle(
-          //     fontSize: 12,
-          //     fontWeight: FontWeight.bold,
-          //     color: Colors.green.withOpacity(0.8),
-          //   ),
-          // ),
-          const SizedBox(height: 4),
-          Text(
-            transaction.date != null
-                ? "Fecha: ${transaction.date.toLocal().toIso8601String().split('T')[0]}"
-                : "Fecha no disponible",
-            style: const TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFinanceCard(
-      String title, double amount, IconData icon, Color color) {
+  Widget _buildAccountCard(AccountMeta a) {
     return Container(
       width: 200,
       padding: const EdgeInsets.all(12),
@@ -337,14 +264,15 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Row(
             children: [
-              Icon(icon, color: color),
+              const Icon(Icons.account_balance_wallet_outlined),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  title,
+                  a.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontWeight: FontWeight.w600),
@@ -352,12 +280,12 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
+          const SizedBox(height: 6),
           Text(
-            formatCurrency(amount),
-            style: TextStyle(
+            a.currentBalanceFormatted,
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: color,
             ),
           ),
         ],
@@ -365,25 +293,75 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget buildFinanceCardSkeleton() {
+  Widget _buildChip({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.grey.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18),
+          const SizedBox(width: 8),
+          Text(
+            "$label: ",
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          Text(value),
+        ],
+      ),
+    );
+  }
+
+  Widget _accountCardSkeleton() {
     return Card(
-      elevation: 4,
+      elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Shimmer.fromColors(
         baseColor: Colors.grey[300]!,
         highlightColor: Colors.grey[100]!,
-        child: Container(
-          height: 130,
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              Container(width: 32, height: 32, color: Colors.white),
-              Container(width: 60, height: 14, color: Colors.white),
-              Container(width: 80, height: 16, color: Colors.white),
-            ],
+        child: SizedBox(
+          width: 200,
+          height: 90,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                    height: 14, width: double.infinity, color: Colors.white),
+                const SizedBox(height: 10),
+                Container(height: 16, width: 120, color: Colors.white),
+              ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _errorBox(String text, {required VoidCallback onRetry}) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.red.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline, color: Colors.red),
+          const SizedBox(width: 10),
+          Expanded(child: Text(text)),
+          TextButton(onPressed: onRetry, child: const Text("Reintentar")),
+        ],
       ),
     );
   }
@@ -430,6 +408,59 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/* ---------------------------- Models for meta ---------------------------- */
+
+class _HomeMeta {
+  final List<AccountMeta> accounts;
+  final List<CategoryMeta> categories;
+
+  _HomeMeta({required this.accounts, required this.categories});
+
+  int get incomeCount => categories.where((c) => c.type == 'income').length;
+  int get expenseCount => categories.where((c) => c.type == 'expense').length;
+}
+
+class AccountMeta {
+  final int id;
+  final String name;
+  final double currentBalance;
+  final String currentBalanceFormatted;
+
+  AccountMeta({
+    required this.id,
+    required this.name,
+    required this.currentBalance,
+    required this.currentBalanceFormatted,
+  });
+
+  factory AccountMeta.fromJson(Map<String, dynamic> json) {
+    return AccountMeta(
+      id: int.tryParse(json['id']?.toString() ?? '') ?? 0,
+      name: (json['name'] ?? '').toString(),
+      currentBalance:
+          double.tryParse(json['current_balance']?.toString() ?? '') ?? 0.0,
+      currentBalanceFormatted:
+          (json['current_balance_formatted'] ?? '0.00').toString(),
+    );
+  }
+}
+
+class CategoryMeta {
+  final int id;
+  final String name;
+  final String type; // income | expense
+
+  CategoryMeta({required this.id, required this.name, required this.type});
+
+  factory CategoryMeta.fromJson(Map<String, dynamic> json) {
+    return CategoryMeta(
+      id: int.tryParse(json['id']?.toString() ?? '') ?? 0,
+      name: (json['name'] ?? '').toString(),
+      type: (json['type'] ?? '').toString(),
     );
   }
 }
