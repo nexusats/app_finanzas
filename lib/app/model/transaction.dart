@@ -81,6 +81,7 @@ class Transaction {
   /// attachment_ids (si lo manejas) lo mandas desde el provider, no desde el modelo.
   Map<String, dynamic> toJson() {
     return {
+      "id": id,
       "type": type,
       "amount": amount,
       "account_id": accountId,

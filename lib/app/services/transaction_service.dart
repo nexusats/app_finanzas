@@ -38,8 +38,20 @@ class TransactionService {
     final response = await http.get(url, headers: headers);
 
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return data['data'];
+      final body = jsonDecode(response.body);
+
+      // soporte para respuesta paginada: data.data
+      final data = body['data'];
+      if (data is Map<String, dynamic> && data['data'] is List) {
+        return data['data'] as List<dynamic>;
+      }
+
+      // soporte por si alguna vez viene plana: data:[]
+      if (body['data'] is List) {
+        return body['data'] as List<dynamic>;
+      }
+
+      return [];
     } else {
       return [];
     }

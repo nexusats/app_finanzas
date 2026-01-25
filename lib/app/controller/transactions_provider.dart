@@ -134,9 +134,8 @@ class TransactionsProvider extends ChangeNotifier {
           await _transactionService.createTransaction(transaction.toJson());
 
       if (success) {
-        _transactions.add(transaction);
-        await _saveTransactions();
-        notifyListeners();
+        // recargar desde API para traer el registro real con id y reescribir cache
+        await fetchTransactions();
 
         if (context.mounted) {
           CustomSnackbar.show(context, "Transacción agregada exitosamente");
@@ -168,13 +167,10 @@ class TransactionsProvider extends ChangeNotifier {
       );
 
       if (success) {
-        print("entro");
         final index =
             _transactions.indexWhere((t) => t.id == updatedTransaction.id);
 
-        print("index: $index");
         if (index != -1) {
-          print("entro2");
           _transactions[index] = updatedTransaction;
           _selectedTransaction = updatedTransaction;
 
@@ -205,9 +201,28 @@ class TransactionsProvider extends ChangeNotifier {
 
   Future<void> removeTransaction(
       BuildContext context, Transaction transaction) async {
-    _transactions.remove(transaction);
-    await _saveTransactions();
-    notifyListeners();
-    CustomSnackbar.show(context, "Transacción eliminada");
+    if (transaction.id == null) {
+      CustomSnackbar.show(context, "No se puede eliminar: id inválido",
+          isError: true);
+      return;
+    }
+
+    try {
+      final ok = await _transactionService.deleteTransaction(transaction.id!);
+      if (ok) {
+        await fetchTransactions();
+        if (context.mounted) {
+          CustomSnackbar.show(context, "Transacción eliminada");
+        }
+      } else {
+        if (context.mounted) {
+          CustomSnackbar.show(context, "Error al eliminar", isError: true);
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        CustomSnackbar.show(context, "Error: $e", isError: true);
+      }
+    }
   }
 }
