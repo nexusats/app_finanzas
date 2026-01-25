@@ -32,11 +32,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (_formKey.currentState?.validate() ?? false) {
       final email = _emailController.text.trim();
       final password = _passwordController.text.trim();
+      final passwordConfirmation = _confirmPasswordController.text.trim();
       final username = _usernameController.text.trim();
 
       final userData = {
         "email": email,
         "password": password,
+        "password_confirmation": passwordConfirmation,
         "username": username,
       };
 
@@ -63,17 +65,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
               LoginField(
                 hintText: "Username",
                 controller: _usernameController,
-                validator: (value) =>
-                    value == null || value.isEmpty ? "Username is required" : null,
+                validator: (value) => value == null || value.isEmpty
+                    ? "Username is required"
+                    : null,
               ),
               const SizedBox(height: 16),
               LoginField(
                 hintText: "Email",
                 controller: _emailController,
                 validator: (value) {
-                  if (value == null || value.isEmpty) return "Email is required";
+                  if (value == null || value.isEmpty)
+                    return "Email is required";
                   final emailRegex = RegExp(r"^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$");
-                  if (!emailRegex.hasMatch(value)) return "Invalid email format";
+                  if (!emailRegex.hasMatch(value))
+                    return "Invalid email format";
                   return null;
                 },
               ),
@@ -83,8 +88,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 isPassword: true,
                 controller: _passwordController,
                 validator: (value) {
-                  if (value == null || value.isEmpty) return "Password is required";
-                  if (value.length < 6) return "Password must be at least 6 characters";
+                  if (value == null || value.isEmpty)
+                    return "Password is required";
+                  if (value.length < 6)
+                    return "Password must be at least 6 characters";
                   return null;
                 },
               ),
@@ -94,8 +101,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 isPassword: true,
                 controller: _confirmPasswordController,
                 validator: (value) {
-                  if (value == null || value.isEmpty) return "Please confirm your password";
-                  if (value != _passwordController.text) return "Passwords do not match";
+                  if (value == null || value.isEmpty)
+                    return "Please confirm your password";
+                  if (value != _passwordController.text)
+                    return "Passwords do not match";
                   return null;
                 },
               ),

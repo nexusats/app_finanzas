@@ -65,16 +65,19 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// **Login del usuario**
-  Future<void> login(BuildContext context, Map<String, dynamic> userData) async {
+  Future<void> login(
+      BuildContext context, Map<String, dynamic> userData) async {
     try {
       final result = await _authService.login(userData);
 
       if (result["success"] == true) {
-        _currentUser = result["user"] != null ? User.fromJson(result["user"]) : null;
+        _currentUser =
+            result["user"] != null ? User.fromJson(result["user"]) : null;
         _token = result["token"] ?? "";
 
         if (_token!.isEmpty) {
-          CustomSnackbar.show(context, "⚠️ Advertencia: el token está vacío", isError: true);
+          CustomSnackbar.show(context, "⚠️ Advertencia: el token está vacío",
+              isError: true);
           return;
         }
 
@@ -88,7 +91,8 @@ class AuthProvider extends ChangeNotifier {
           MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
       } else {
-        CustomSnackbar.show(context, result["message"] ?? "Error desconocido", isError: true);
+        CustomSnackbar.show(context, result["message"] ?? "Error desconocido",
+            isError: true);
       }
     } catch (error) {
       CustomSnackbar.show(context, "Error de conexión: $error", isError: true);
@@ -96,16 +100,19 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// **Register del usuario**
-  Future<void> register(BuildContext context, Map<String, dynamic> userData) async {
+  Future<void> register(
+      BuildContext context, Map<String, dynamic> userData) async {
     try {
       final result = await _authService.register(userData);
 
       if (result["success"] == true) {
-        _currentUser = result["user"] != null ? User.fromJson(result["user"]) : null;
+        _currentUser =
+            result["user"] != null ? User.fromJson(result["user"]) : null;
         _token = result["token"] ?? "";
 
         if (_token!.isEmpty) {
-          CustomSnackbar.show(context, "⚠️ Advertencia: el token está vacío", isError: true);
+          CustomSnackbar.show(context, "⚠️ Advertencia: el token está vacío",
+              isError: true);
           return;
         }
 
@@ -119,7 +126,8 @@ class AuthProvider extends ChangeNotifier {
           MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
       } else {
-        CustomSnackbar.show(context, result["message"] ?? "Error desconocido", isError: true);
+        CustomSnackbar.show(context, result["message"] ?? "Error desconocido",
+            isError: true);
       }
     } catch (error) {
       CustomSnackbar.show(context, "Error de conexión: $error", isError: true);
@@ -127,15 +135,18 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// **Reset Password del usuario**
-  Future<bool> resetPassword(BuildContext context, Map<String, dynamic> userData) async {
+  Future<bool> resetPassword(
+      BuildContext context, Map<String, dynamic> userData) async {
     try {
       final result = await _authService.resetPassword(userData);
 
       if (result["success"] == true) {
-        CustomSnackbar.show(context, "Correo enviado para restablecer la contraseña con éxito");
+        CustomSnackbar.show(
+            context, "Correo enviado para restablecer la contraseña con éxito");
         return true;
       } else {
-        CustomSnackbar.show(context, result["message"] ?? "Error desconocido", isError: true);
+        CustomSnackbar.show(context, result["message"] ?? "Error desconocido",
+            isError: true);
         return false;
       }
     } catch (error) {
@@ -158,11 +169,15 @@ class AuthProvider extends ChangeNotifier {
         _redirectToLogin(context);
       } else {
         if (result["statusCode"] == 401) {
-          CustomSnackbar.show(context, "⚠️ Sesión expirada, vuelve a iniciar sesión", isError: true);
+          CustomSnackbar.show(
+              context, "⚠️ Sesión expirada, vuelve a iniciar sesión",
+              isError: true);
           _clearSession();
           _redirectToLogin(context);
         } else {
-          CustomSnackbar.show(context, result["message"] ?? "Error al cerrar sesión", isError: true);
+          CustomSnackbar.show(
+              context, result["message"] ?? "Error al cerrar sesión",
+              isError: true);
         }
       }
     } catch (error) {
