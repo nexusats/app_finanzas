@@ -7,6 +7,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:app_finanzas/screen/home_screen.dart';
 import 'package:app_finanzas/screen/auth/login_screen.dart';
 import 'package:app_finanzas/app/controller/auth_provider.dart';
+import 'package:app_finanzas/app/controller/account_provider.dart';
 import 'package:app_finanzas/app/controller/category_provider.dart';
 import 'package:app_finanzas/app/controller/transactions_provider.dart';
 
@@ -38,6 +39,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => TransactionsProvider()),
         ChangeNotifierProvider(create: (_) => CategoryProvider()),
+        ChangeNotifierProvider(create: (_) => AccountProvider()),
       ],
       child: Consumer<AuthProvider>(
         builder: (context, authProvider, child) {

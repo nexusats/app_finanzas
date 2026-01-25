@@ -6,6 +6,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:app_finanzas/config/global.dart';
 import 'package:app_finanzas/screen/auth/login_screen.dart';
 import 'package:app_finanzas/app/controller/auth_provider.dart';
+import 'package:app_finanzas/screen/account/account_list_screen.dart';
 import 'package:app_finanzas/app/controller/transactions_provider.dart';
 import 'package:app_finanzas/screen/category/category_list_screen.dart';
 import 'package:app_finanzas/screen/transaction/transaction_screen.dart';
@@ -76,6 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _buildHomeScreen(),
           const TransactionScreen(showAppBar: false),
           const CategoryListScreen(),
+          const AccountListScreen(),
           _buildSettingsScreen(context.read<AuthProvider>()),
         ];
 
@@ -128,6 +130,10 @@ class _HomeScreenState extends State<HomeScreen> {
         BottomNavigationBarItem(
           icon: Icon(Icons.category_rounded),
           label: "Categorías",
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.account_balance_wallet_rounded),
+          label: "Cuentas",
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.tune_rounded),
