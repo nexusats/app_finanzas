@@ -1,9 +1,9 @@
 name: app_finanzas
 description: "Tu app de gestión financiera personalizada"
 
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+publish_to: "none" # Remove this line if you wish to publish to pub.dev
 
-version: 1.0.0+1
+version: 1.0.2+3
 
 environment:
   sdk: ^3.6.2
@@ -25,7 +25,7 @@ dependencies:
   shimmer: ^3.0.0
   flutter_speed_dial: ^7.0.0
   intl: ^0.18.1
-  
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -40,7 +40,6 @@ flutter_icons:
   adaptive_icon_foreground: "assets/playstore.png"
 
 flutter:
-
   uses-material-design: true
 
   assets:
