@@ -20,13 +20,12 @@ class _AccountListScreenState extends State<AccountListScreen> {
   void initState() {
     super.initState();
     Future.microtask(() {
-      Provider.of<AccountProvider>(context, listen: false)
-          .fetchFromApiAndUpdateLocal();
+      context.read<AccountProvider>().fetchIfNeeded();
     });
   }
 
   Future<void> _openEditModal(BuildContext context, Account? account) async {
-    await showModalBottomSheet<bool>(
+    final changed = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -37,8 +36,9 @@ class _AccountListScreenState extends State<AccountListScreen> {
     );
 
     if (!mounted) return;
-    Provider.of<AccountProvider>(context, listen: false)
-        .fetchFromApiAndUpdateLocal();
+    if (changed == true) {
+      await context.read<AccountProvider>().refresh();
+    }
   }
 
   Future<void> _confirmArchive(
@@ -65,7 +65,7 @@ class _AccountListScreenState extends State<AccountListScreen> {
     if (ok != true) return;
 
     await provider.removeAccount(account);
-    await provider.fetchFromApiAndUpdateLocal();
+    await provider.refresh();
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -122,7 +122,7 @@ class _AccountListScreenState extends State<AccountListScreen> {
                 : accounts.isEmpty
                     ? const Center(child: Text('No hay cuentas registradas'))
                     : RefreshIndicator(
-                        onRefresh: () => provider.fetchFromApiAndUpdateLocal(),
+                        onRefresh: () => provider.refresh(),
                         child: ListView.builder(
                           padding: const EdgeInsets.only(bottom: 100),
                           itemCount: accounts.length,
@@ -205,7 +205,7 @@ class _AccountListScreenState extends State<AccountListScreen> {
               SpeedDialChild(
                 child: const Icon(Icons.refresh),
                 label: 'Refrescar',
-                onTap: () => provider.fetchFromApiAndUpdateLocal(),
+                onTap: () => provider.refresh(),
               ),
             ],
           ),

@@ -6,98 +6,139 @@ import 'package:app_finanzas/app/services/account_service.dart';
 
 class AccountProvider with ChangeNotifier {
   final AccountService _accountService = AccountService();
-  final String _storageKey = 'accounts';
+  static const String _storageKey = 'accounts';
 
-  List<Account> _accounts = [];
-  bool _isLoading = true;
+  final List<Account> _accounts = [];
+  bool _isLoading = false;
 
-  List<Account> get accounts => _accounts;
+  bool _loadedOnce = false;
+  Future<void>? _inFlight;
+
+  static const Duration _ttl = Duration(minutes: 10);
+  DateTime? _lastFetchAt;
+
+  List<Account> get accounts => List.unmodifiable(_accounts);
   bool get isLoading => _isLoading;
 
   AccountProvider() {
-    _initProvider();
+    _warmFromLocal();
   }
 
-  Future<void> _initProvider() async {
-    await _loadAccountsFromLocal();
-    fetchFromApiAndUpdateLocal();
-  }
-
-  Future<void> _loadAccountsFromLocal() async {
+  Future<void> _warmFromLocal() async {
     final prefs = await SharedPreferences.getInstance();
-    final data = prefs.getString(_storageKey);
+    final raw = prefs.getString(_storageKey);
 
-    if (data != null) {
-      try {
-        final decoded = jsonDecode(data);
-        _accounts = (decoded as List).map((e) => Account.fromJson(e)).toList();
-      } catch (_) {
-        _accounts = [];
-      }
-    } else {
-      _accounts = [];
+    if (raw == null || raw.isEmpty) {
+      notifyListeners();
+      return;
     }
 
-    _isLoading = false;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is List) {
+        _accounts
+          ..clear()
+          ..addAll(decoded.map((e) => Account.fromJson(e)).toList());
+      }
+    } catch (_) {
+      // ignore cache corrupto
+    }
+
     notifyListeners();
   }
 
-  Future<void> _saveAccountsToLocal() async {
+  Future<void> _saveToLocal() async {
     final prefs = await SharedPreferences.getInstance();
     final encoded = jsonEncode(_accounts.map((e) => e.toJson()).toList());
     await prefs.setString(_storageKey, encoded);
   }
 
-  Future<void> fetchFromApiAndUpdateLocal() async {
+  bool _isFresh() {
+    if (_lastFetchAt == null) return false;
+    return DateTime.now().difference(_lastFetchAt!) < _ttl;
+  }
+
+  Future<void> fetchIfNeeded({bool force = false}) async {
+    if (_inFlight != null) return _inFlight!;
+    if (_loadedOnce && !force && _isFresh()) return;
+
+    _inFlight = _fetchFromApi(forceLoadingUi: !_loadedOnce)
+        .whenComplete(() => _inFlight = null);
+
+    return _inFlight!;
+  }
+
+  Future<void> refresh() => fetchIfNeeded(force: true);
+
+  Future<void> _fetchFromApi({required bool forceLoadingUi}) async {
+    if (forceLoadingUi) {
+      _isLoading = true;
+      notifyListeners();
+    }
+
     try {
       final response = await _accountService.getAccounts();
 
-      if (response.isNotEmpty) {
-        _accounts = response.map((e) => Account.fromJson(e)).toList();
-        await _saveAccountsToLocal();
-        notifyListeners();
-      } else {
-        debugPrint("Advertencia: API retornó lista vacía");
+      // Lista vacía puede ser válida, no es “advertencia”
+      _accounts
+        ..clear()
+        ..addAll(response.map((e) => Account.fromJson(e)).toList());
+
+      _loadedOnce = true;
+      _lastFetchAt = DateTime.now();
+      await _saveToLocal();
+    } catch (_) {
+      // Si falla, te quedas con local cache
+    } finally {
+      if (forceLoadingUi) {
+        _isLoading = false;
       }
-    } catch (e) {
-      debugPrint("Error al cargar cuentas desde API: $e. Usando caché...");
-    }
-  }
-
-  Future<void> reloadAccountsFromLocalStorage() async {
-    _isLoading = true;
-    notifyListeners();
-    await _loadAccountsFromLocal();
-  }
-
-  Future<bool> createAccount(Map<String, dynamic> accountData) async {
-    final success = await _accountService.createAccount(accountData);
-    if (success) {
-      await fetchFromApiAndUpdateLocal();
-    }
-    return success;
-  }
-
-  Future<bool> updateAccount(int id, Map<String, dynamic> accountData) async {
-    final success = await _accountService.updateAccount(id, accountData);
-    if (success) {
-      await fetchFromApiAndUpdateLocal();
-    }
-    return success;
-  }
-
-  Future<void> removeAccount(Account account) async {
-    final success = await _accountService.deleteAccount(account.id!);
-    if (success) {
-      _accounts.removeWhere((e) => e.id == account.id);
-      await _saveAccountsToLocal();
       notifyListeners();
     }
   }
 
-  void clear() {
-    _accounts = [];
-    _isLoading = true;
+  // -------- CRUD --------
+
+  Future<bool> createAccount(Map<String, dynamic> accountData) async {
+    final ok = await _accountService.createAccount(accountData);
+    if (ok) {
+      await refresh();
+    }
+    return ok;
+  }
+
+  Future<bool> updateAccount(int id, Map<String, dynamic> accountData) async {
+    final ok = await _accountService.updateAccount(id, accountData);
+    if (ok) {
+      await refresh();
+    }
+    return ok;
+  }
+
+  Future<void> removeAccount(Account account) async {
+    // Optimista: quita local primero (UI rápida)
+    _accounts.removeWhere((e) => e.id == account.id);
+    notifyListeners();
+    await _saveToLocal();
+
+    final ok = await _accountService.deleteAccount(account.id!);
+    if (!ok) {
+      // si falla, re-sincroniza
+      await refresh();
+    } else {
+      _lastFetchAt = DateTime.now();
+    }
+  }
+
+  Future<void> clear() async {
+    _accounts.clear();
+    _isLoading = false;
+    _loadedOnce = false;
+    _lastFetchAt = null;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_storageKey);
+
     notifyListeners();
   }
 }
