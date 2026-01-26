@@ -73,6 +73,37 @@ class _AccountListScreenState extends State<AccountListScreen> {
     );
   }
 
+  Future<void> _confirmDelete(AccountProvider provider, Account account) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar cuenta'),
+        content: Text('¿Seguro que deseas eliminar "${account.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+
+    if (ok != true) return;
+
+    await provider.removeAccount(account);
+    await provider.refresh();
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Cuenta archivada')),
+    );
+  }
+
   Widget _skeletonList() {
     return ListView.builder(
       padding: const EdgeInsets.only(bottom: 100, top: 8),
@@ -172,12 +203,26 @@ class _AccountListScreenState extends State<AccountListScreen> {
                                     IconButton(
                                       icon: Icon(
                                         Icons.archive,
+                                        color: archived
+                                            ? Colors.grey
+                                            : Colors.orange,
+                                      ),
+                                      onPressed: archived
+                                          ? null
+                                          : () => _confirmArchive(
+                                                provider,
+                                                account,
+                                              ),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(
+                                        Icons.delete,
                                         color:
                                             archived ? Colors.grey : Colors.red,
                                       ),
                                       onPressed: archived
                                           ? null
-                                          : () => _confirmArchive(
+                                          : () => _confirmDelete(
                                                 provider,
                                                 account,
                                               ),
