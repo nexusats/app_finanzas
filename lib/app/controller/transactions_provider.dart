@@ -7,91 +7,97 @@ import 'package:app_finanzas/app/services/transaction_service.dart';
 
 class TransactionsProvider extends ChangeNotifier {
   final List<Transaction> _transactions = [];
-  SharedPreferences? _prefs;
   final TransactionService _transactionService = TransactionService();
+
+  SharedPreferences? _prefs;
   Transaction? _selectedTransaction;
-  bool _isLoading = true;
+
+  bool _isLoading = false; // UI loading (una sola fuente de verdad)
+  bool _loadedOnce = false; // ya cargó al menos una vez desde API
+  Future<void>? _inFlight; // dedupe de requests simultáneos
 
   Transaction? get selectedTransaction => _selectedTransaction;
   List<Transaction> get transactions => List.unmodifiable(_transactions);
   bool get isLoading => _isLoading;
 
   TransactionsProvider() {
-    _loadTransactions();
+    // Importante: NO pegues al API aquí.
+    // Solo carga cache local para que la UI no arranque vacía.
+    _warmFromCache();
   }
 
   // ----------------------
-  //   MÉTODOS DE CÁLCULO
+  //   CACHE FIRST (LOCAL)
   // ----------------------
 
-  double getTotalSavings() => _transactions
-      .where((t) => t.type == "saving")
-      .fold(0.0, (sum, t) => sum + t.amount);
-
-  double getTotalIncomes() => _transactions
-      .where((t) => t.type == "income")
-      .fold(0.0, (sum, t) => sum + t.amount);
-
-  double getTotalExpenses() => _transactions
-      .where((t) => t.type == "expense")
-      .fold(0.0, (sum, t) => sum + t.amount);
-
-  double getTotalDebt() => _transactions
-      .where((t) => t.type == "expense")
-      .fold(0.0, (sum, t) => sum + t.amount);
-
-  double getBalance() => getTotalIncomes() - getTotalExpenses();
-
-  double getTotalByType(String type) => _transactions
-      .where((t) => t.type == type)
-      .fold(0.0, (sum, t) => sum + t.amount);
-
-  List<Transaction> getTransactionsByType(
-    String type, {
-    List<int> statusIds = const [8, 9],
-  }) {
-    return _transactions.toList();
-  }
-
-  // ----------------------
-  //   FETCH GENERAL
-  // ----------------------
-
-  Future<void> fetchTransactions() async {
-    await _loadTransactions();
-  }
-
-  Future<void> _loadTransactions() async {
-    _isLoading = true;
-    notifyListeners();
-
+  Future<void> _warmFromCache() async {
     _prefs ??= await SharedPreferences.getInstance();
+    final stored = _prefs?.getStringList("_transactions");
+    if (stored == null || stored.isEmpty) return;
 
     try {
-      final fetchedTransactions = await _transactionService.getTransactions();
+      final list = stored
+          .map((jsonStr) => Transaction.fromJson(jsonDecode(jsonStr)))
+          .toList();
 
       _transactions
         ..clear()
-        ..addAll(fetchedTransactions.map(
-          (e) => Transaction.fromJson(e as Map<String, dynamic>),
-        ));
+        ..addAll(list);
 
+      notifyListeners(); // muestra algo rápido mientras el API llega después
+    } catch (_) {
+      // Si el cache está corrupto, no hacemos drama
+    }
+  }
+
+  Future<void> _saveTransactions() async {
+    _prefs ??= await SharedPreferences.getInstance();
+    await _prefs!.setStringList(
+      "_transactions",
+      _transactions.map((t) => jsonEncode(t.toJson())).toList(),
+    );
+  }
+
+  // ----------------------
+  //   FETCH (DEDUPE + IF NEEDED)
+  // ----------------------
+
+  Future<void> fetchTransactionsIfNeeded({bool force = false}) async {
+    if (_inFlight != null) return _inFlight!;
+
+    if (_loadedOnce && !force) return;
+
+    _inFlight = _loadFromApi().whenComplete(() => _inFlight = null);
+    return _inFlight!;
+  }
+
+  Future<void> fetchTransactions({bool force = true}) async {
+    // alias explícito: si llamas fetchTransactions(), por defecto fuerza refresh
+    return fetchTransactionsIfNeeded(force: force);
+  }
+
+  Future<void> _loadFromApi() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final fetched = await _transactionService.getTransactions();
+
+      _transactions
+        ..clear()
+        ..addAll(
+          fetched.map((e) => Transaction.fromJson(e as Map<String, dynamic>)),
+        );
+
+      _loadedOnce = true;
       await _saveTransactions();
     } catch (_) {
-      final storedTransactions = _prefs?.getStringList("_transactions");
-      if (storedTransactions != null) {
-        _transactions
-          ..clear()
-          ..addAll(
-            storedTransactions.map(
-              (json) => Transaction.fromJson(jsonDecode(json)),
-            ),
-          );
-      }
+      // Si falla el API, nos quedamos con lo que haya en cache (ya está warm)
+      // y solo apagamos loading.
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-
-    _isLoading = false;
-    notifyListeners();
   }
 
   // ----------------------
@@ -112,19 +118,43 @@ class TransactionsProvider extends ChangeNotifier {
   }
 
   // ----------------------
-  //   GUARDAR LOCALMENTE
+  //   CÁLCULOS
   // ----------------------
 
-  Future<void> _saveTransactions() async {
-    _prefs ??= await SharedPreferences.getInstance();
-    await _prefs!.setStringList(
-      "_transactions",
-      _transactions.map((t) => jsonEncode(t.toJson())).toList(),
-    );
+  double getTotalSavings() => _transactions
+      .where((t) => t.type == "saving")
+      .fold(0.0, (sum, t) => sum + t.amount);
+
+  double getTotalIncomes() => _transactions
+      .where((t) => t.type == "income")
+      .fold(0.0, (sum, t) => sum + t.amount);
+
+  double getTotalExpenses() => _transactions
+      .where((t) => t.type == "expense")
+      .fold(0.0, (sum, t) => sum + t.amount);
+
+  // Ajusta esto según tu modelo real: si tienes "debt" como type, úsalo.
+  double getTotalDebt() => _transactions
+      .where((t) => t.type == "debt")
+      .fold(0.0, (sum, t) => sum + t.amount);
+
+  double getBalance() => getTotalIncomes() - getTotalExpenses();
+
+  double getTotalByType(String type) => _transactions
+      .where((t) => t.type == type)
+      .fold(0.0, (sum, t) => sum + t.amount);
+
+  List<Transaction> getTransactionsByType(
+    String type, {
+    List<int> statusIds = const [8, 9],
+  }) {
+    // Si tienes status_id en Transaction, aplica filtro.
+    // Si no, quita statusIds de la firma para no mentirle al código 😄
+    return _transactions.where((t) => t.type == type).toList();
   }
 
   // ----------------------
-  //   AGREGAR
+  //   AGREGAR / UPDATE / DELETE
   // ----------------------
 
   Future<void> addTransaction(
@@ -133,18 +163,19 @@ class TransactionsProvider extends ChangeNotifier {
       final success =
           await _transactionService.createTransaction(transaction.toJson());
 
-      if (success) {
-        // recargar desde API para traer el registro real con id y reescribir cache
-        await fetchTransactions();
-
-        if (context.mounted) {
-          CustomSnackbar.show(context, "Transacción agregada exitosamente");
-        }
-      } else {
+      if (!success) {
         if (context.mounted) {
           CustomSnackbar.show(context, "Error al agregar la transacción",
               isError: true);
         }
+        return;
+      }
+
+      // refresca desde API para traer id real y persistir cache
+      await fetchTransactions(force: true);
+
+      if (context.mounted) {
+        CustomSnackbar.show(context, "Transacción agregada exitosamente");
       }
     } catch (error) {
       if (context.mounted) {
@@ -154,10 +185,6 @@ class TransactionsProvider extends ChangeNotifier {
     }
   }
 
-  // ----------------------
-  //   ACTUALIZAR
-  // ----------------------
-
   Future<void> updateTransaction(
       BuildContext context, Transaction updatedTransaction) async {
     try {
@@ -166,27 +193,25 @@ class TransactionsProvider extends ChangeNotifier {
         updatedTransaction.toJson(),
       );
 
-      if (success) {
-        final index =
-            _transactions.indexWhere((t) => t.id == updatedTransaction.id);
-
-        if (index != -1) {
-          _transactions[index] = updatedTransaction;
-          _selectedTransaction = updatedTransaction;
-
-          await _saveTransactions();
-          notifyListeners();
-
-          if (context.mounted) {
-            CustomSnackbar.show(context, "Transacción actualizada");
-          } else {
-            CustomSnackbar.show(context, "Error al actualizar", isError: true);
-          }
-        }
-      } else {
+      if (!success) {
         if (context.mounted) {
           CustomSnackbar.show(context, "Error al actualizar", isError: true);
         }
+        return;
+      }
+
+      final index =
+          _transactions.indexWhere((t) => t.id == updatedTransaction.id);
+
+      if (index != -1) {
+        _transactions[index] = updatedTransaction;
+        _selectedTransaction = updatedTransaction;
+        await _saveTransactions();
+        notifyListeners();
+      }
+
+      if (context.mounted) {
+        CustomSnackbar.show(context, "Transacción actualizada");
       }
     } catch (e) {
       if (context.mounted) {
@@ -195,34 +220,53 @@ class TransactionsProvider extends ChangeNotifier {
     }
   }
 
-  // ----------------------
-  //   ELIMINAR
-  // ----------------------
-
   Future<void> removeTransaction(
       BuildContext context, Transaction transaction) async {
     if (transaction.id == null) {
-      CustomSnackbar.show(context, "No se puede eliminar: id inválido",
-          isError: true);
+      if (context.mounted) {
+        CustomSnackbar.show(context, "No se puede eliminar: id inválido",
+            isError: true);
+      }
       return;
     }
 
     try {
       final ok = await _transactionService.deleteTransaction(transaction.id!);
-      if (ok) {
-        await fetchTransactions();
-        if (context.mounted) {
-          CustomSnackbar.show(context, "Transacción eliminada");
-        }
-      } else {
+      if (!ok) {
         if (context.mounted) {
           CustomSnackbar.show(context, "Error al eliminar", isError: true);
         }
+        return;
+      }
+
+      // Optimista: quítala local primero para UI rápida
+      _transactions.removeWhere((t) => t.id == transaction.id);
+      await _saveTransactions();
+      notifyListeners();
+
+      // Luego refresca en segundo plano si quieres consistencia total:
+      await fetchTransactions(force: true);
+
+      if (context.mounted) {
+        CustomSnackbar.show(context, "Transacción eliminada");
       }
     } catch (e) {
       if (context.mounted) {
         CustomSnackbar.show(context, "Error: $e", isError: true);
       }
     }
+  }
+
+  // Útil para logout
+  Future<void> clearLocal() async {
+    _transactions.clear();
+    _selectedTransaction = null;
+    _loadedOnce = false;
+    _isLoading = false;
+
+    _prefs ??= await SharedPreferences.getInstance();
+    await _prefs!.remove("_transactions");
+
+    notifyListeners();
   }
 }
