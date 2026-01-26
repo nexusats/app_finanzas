@@ -48,8 +48,7 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
   void initState() {
     super.initState();
     Future.microtask(() {
-      Provider.of<CategoryProvider>(context, listen: false)
-          .fetchFromApiAndUpdateLocal();
+      context.read<CategoryProvider>().fetchIfNeeded();
     });
   }
 
@@ -67,8 +66,7 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
 
     // sin depender de "result == true" (para que refresque siempre)
     if (!mounted) return;
-    Provider.of<CategoryProvider>(context, listen: false)
-        .fetchFromApiAndUpdateLocal();
+    Provider.of<CategoryProvider>(context, listen: false).refresh();
   }
 
   Future<void> _confirmArchive(
@@ -96,7 +94,7 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
 
     provider.removeCategory(category);
     // opcional: refrescar del API por si el backend reordena / filtra
-    await provider.fetchFromApiAndUpdateLocal();
+    await provider.refresh();
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -155,7 +153,7 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                 : categories.isEmpty
                     ? const Center(child: Text('No hay categorías registradas'))
                     : RefreshIndicator(
-                        onRefresh: () => provider.fetchFromApiAndUpdateLocal(),
+                        onRefresh: () => provider.refresh(),
                         child: ListView.builder(
                           padding: const EdgeInsets.only(bottom: 100),
                           itemCount: categories.length,
@@ -228,7 +226,7 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
               SpeedDialChild(
                 child: const Icon(Icons.refresh),
                 label: 'Refrescar',
-                onTap: () => provider.fetchFromApiAndUpdateLocal(),
+                onTap: () => provider.refresh(),
               ),
             ],
           ),
