@@ -25,7 +25,16 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   late Future<_HomeMeta> _metaFuture;
 
-  void _onItemTapped(int index) => setState(() => _selectedIndex = index);
+  // void _onItemTapped(int index) => setState(() => _selectedIndex = index);
+
+  void _onItemTapped(int index) {
+    setState(() => _selectedIndex = index);
+
+    // Lazy-load de movimientos solo cuando entra a Movimientos
+    if (index == 1) {
+      context.read<TransactionsProvider>().fetchTransactionsIfNeeded();
+    }
+  }
 
   @override
   void initState() {
@@ -33,9 +42,9 @@ class _HomeScreenState extends State<HomeScreen> {
     _metaFuture = _loadMeta();
 
     // Mantén esto si tu app lo necesita para otras pantallas
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<TransactionsProvider>().fetchTransactions();
-    });
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   context.read<TransactionsProvider>().fetchTransactions();
+    // });
   }
 
   Future<_HomeMeta> _loadMeta() async {
@@ -75,9 +84,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
         final screens = <Widget>[
           _buildHomeScreen(),
-          const TransactionScreen(showAppBar: false),
-          const CategoryListScreen(),
-          const AccountListScreen(),
+          _selectedIndex == 1
+              ? const TransactionScreen(showAppBar: false)
+              : const SizedBox.shrink(),
+          _selectedIndex == 2
+              ? const CategoryListScreen()
+              : const SizedBox.shrink(),
+          _selectedIndex == 3
+              ? const AccountListScreen()
+              : const SizedBox.shrink(),
           _buildSettingsScreen(context.read<AuthProvider>()),
         ];
 
