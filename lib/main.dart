@@ -6,26 +6,29 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'package:app_finanzas/screen/home_screen.dart';
 import 'package:app_finanzas/screen/auth/login_screen.dart';
+
 import 'package:app_finanzas/app/controller/auth_provider.dart';
 import 'package:app_finanzas/app/controller/account_provider.dart';
 import 'package:app_finanzas/app/controller/category_provider.dart';
 import 'package:app_finanzas/app/controller/transactions_provider.dart';
+
+import 'package:app_finanzas/widgets/global_loading_overlay.dart';
 
 Future<void> main() async {
   const String envFile = bool.fromEnvironment('dart.vm.product')
       ? ".env.production"
       : ".env.development";
 
-  await dotenv.load(fileName: envFile); // Carga las variables de entorno
-  WidgetsFlutterBinding
-      .ensureInitialized(); // Asegura que el framework esté inicializado
-  // SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky); // Full screen
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: envFile);
+
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent, // Fondo transparente
-    statusBarIconBrightness: Brightness.light, // Íconos blancos en Android
-    statusBarBrightness: Brightness.dark, // Para iOS
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.light,
+    statusBarBrightness: Brightness.dark,
   ));
+
   runApp(const MyApp());
 }
 
@@ -42,13 +45,19 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AccountProvider()),
       ],
       child: Consumer<AuthProvider>(
-        builder: (context, authProvider, child) {
+        builder: (context, authProvider, _) {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             title: 'Gestiona tus finanzas',
             theme: ThemeData.dark().copyWith(
               scaffoldBackgroundColor: Pallete.backgroundColor,
             ),
+            builder: (context, child) {
+              return GlobalLoadingOverlay(
+                child: child ?? const SizedBox.shrink(),
+                message: 'Procesando...',
+              );
+            },
             home: authProvider.isAuthenticated
                 ? const HomeScreen()
                 : const LoginScreen(),
