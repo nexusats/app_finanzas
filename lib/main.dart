@@ -55,7 +55,6 @@ class MyApp extends StatelessWidget {
             builder: (context, child) {
               return GlobalLoadingOverlay(
                 child: child ?? const SizedBox.shrink(),
-                message: 'Procesando...',
               );
             },
             home: authProvider.isAuthenticated
