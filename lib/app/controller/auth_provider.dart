@@ -162,7 +162,7 @@ class AuthProvider extends ChangeNotifier {
 
       final result = await _authService.logout(_token!);
 
-      if (result["success"] == true) {
+      if (result["message"] == "Sesión cerrada exitosamente") {
         _clearSession();
         CustomSnackbar.show(context, "Sesión cerrada correctamente");
 
