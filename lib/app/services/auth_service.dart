@@ -2,111 +2,154 @@ import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
+import 'package:app_finanzas/app/core/loading_registry.dart';
+
 class AuthService {
   final String baseUrl = dotenv.env['API_BASE_URL'] ?? "";
   final String module = "auth";
 
   /// **Login de usuario**
-  Future<Map<String, dynamic>> login(Map<String, dynamic> data) async {
-    final url = Uri.parse('$baseUrl/$module/login');
+  Future<Map<String, dynamic>> login(Map<String, dynamic> data) {
+    return LoadingRegistry.run(() async {
+      final url = Uri.parse('$baseUrl/$module/login');
 
-    try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(data),
-      );
+      try {
+        final response = await http.post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(data),
+        );
 
-      final responseData = jsonDecode(response.body);
+        final decoded = jsonDecode(response.body);
+        final responseData =
+            decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
 
-      if (response.statusCode == 200) {
+        if (response.statusCode == 200) {
+          return {
+            "success": true,
+            "message": responseData["message"],
+            "user": responseData["user"],
+            "token": responseData["token"],
+          };
+        }
+
         return {
-          "success": true,
-          "message": responseData["message"],
-          "user": responseData["user"],
-          "token": responseData["token"],
+          "success": false,
+          "message": responseData["message"] ?? "Error en las credenciales",
         };
-      } else {
-        return {"success": false, "message": responseData["message"] ?? "Error en las credenciales"};
+      } catch (error) {
+        return {"success": false, "message": "Error de conexión: $error"};
       }
-    } catch (error) {
-      return {"success": false, "message": "Error de conexión: $error"};
-    }
+    });
   }
 
   /// **Register de usuario**
-  Future<Map<String, dynamic>> register(Map<String, dynamic> data) async {
-    final url = Uri.parse('$baseUrl/register');
+  Future<Map<String, dynamic>> register(Map<String, dynamic> data) {
+    return LoadingRegistry.run(() async {
+      final url = Uri.parse('$baseUrl/register');
 
-    try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(data),
-      );
+      try {
+        final response = await http.post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(data),
+        );
 
-      final responseData = jsonDecode(response.body);
+        final decoded = jsonDecode(response.body);
+        final responseData =
+            decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
 
-      if (response.statusCode == 200) {
+        if (response.statusCode == 200) {
+          return {
+            "success": true,
+            "message": responseData["message"],
+            "user": responseData["user"],
+            "token": responseData["token"],
+          };
+        }
+
         return {
-          "success": true,
-          "message": responseData["message"],
-          "user": responseData["user"],
-          "token": responseData["token"],
+          "success": false,
+          "message": responseData["message"] ?? "Error en las credenciales",
         };
-      } else {
-        return {"success": false, "message": responseData["message"] ?? "Error en las credenciales"};
+      } catch (error) {
+        return {"success": false, "message": "Error de conexión: $error"};
       }
-    } catch (error) {
-      return {"success": false, "message": "Error de conexión: $error"};
-    }
+    });
   }
 
   /// **Reset Password del usuario**
-  Future<Map<String, dynamic>> resetPassword(Map<String, dynamic> data) async {
-    final url = Uri.parse('$baseUrl/reset-password');
+  Future<Map<String, dynamic>> resetPassword(Map<String, dynamic> data) {
+    return LoadingRegistry.run(() async {
+      final url = Uri.parse('$baseUrl/reset-password');
 
-    try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(data),
-      );
+      try {
+        final response = await http.post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(data),
+        );
 
-      final responseData = jsonDecode(response.body);
+        final decoded = jsonDecode(response.body);
+        final responseData =
+            decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
 
-      if (response.statusCode == 200) {
-        return {"success": true, "message": responseData["message"] ?? "Enlace de restablecimiento enviado"};
-      } else {
-        return {"success": false, "message": responseData["message"] ?? "Error al enviar el enlace de restablecimiento"};
+        if (response.statusCode == 200) {
+          return {
+            "success": true,
+            "message":
+                responseData["message"] ?? "Enlace de restablecimiento enviado",
+          };
+        }
+
+        return {
+          "success": false,
+          "message": responseData["message"] ??
+              "Error al enviar el enlace de restablecimiento",
+        };
+      } catch (error) {
+        return {"success": false, "message": "Error de conexión: $error"};
       }
-    } catch (error) {
-      return {"success": false, "message": "Error de conexión: $error"};
-    }
+    });
   }
 
   /// **Logout de usuario**
-  Future<Map<String, dynamic>> logout(String token) async {
-    final url = Uri.parse('$baseUrl/$module/logout');
+  Future<Map<String, dynamic>> logout(String token) {
+    return LoadingRegistry.run(() async {
+      final url = Uri.parse('$baseUrl/$module/logout');
 
-    try {
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
+      try {
+        final response = await http.post(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+            if (token.isNotEmpty) 'Authorization': 'Bearer $token',
+          },
+        );
 
-      final responseData = jsonDecode(response.body);
+        final decoded = jsonDecode(response.body);
+        final responseData =
+            decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
 
-      if (response.statusCode == 201) {
-        return {"success": true, "message": responseData["message"] ?? "Sesión cerrada correctamente", "statusCode": response.statusCode};
-      } else {
-        return {"success": false, "message": responseData["message"] ?? "Error al cerrar sesión", "statusCode": response.statusCode};
+        final ok = response.statusCode == 201 || response.statusCode == 200;
+
+        if (ok) {
+          return {
+            "success": true,
+            "message":
+                responseData["message"] ?? "Sesión cerrada correctamente",
+            "statusCode": response.statusCode,
+          };
+        }
+
+        return {
+          "success": false,
+          "message": responseData["message"] ?? "Error al cerrar sesión",
+          "statusCode": response.statusCode,
+        };
+      } catch (error) {
+        return {"success": false, "message": "Error de conexión: $error"};
       }
-    } catch (error) {
-      return {"success": false, "message": "Error de conexión: $error"};
-    }
+    });
   }
 }

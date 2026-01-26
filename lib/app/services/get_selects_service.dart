@@ -3,6 +3,8 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:app_finanzas/app/core/loading_registry.dart';
+
 class GetSelectsService {
   static Map<String, dynamic>? _cache;
   static DateTime? _cacheAt;
@@ -51,17 +53,19 @@ class GetSelectsService {
     List<String> fields, {
     bool forceRefresh = false,
   }) async {
-    // Si ya tengo cache fresco y no forzaron refresh, devuelvo directo
+    // Si hay cache fresco y no forzaron refresh, NO mostramos loader
     if (!forceRefresh && _isCacheFresh()) {
       return _cache!;
     }
 
-    // Si ya hay un request en vuelo, reutilízalo
+    // Si ya hay un request en vuelo, reutilízalo (NO dispares otro loader)
     if (_inFlight != null) {
       return _inFlight!;
     }
 
-    _inFlight = _fetchRemote(fields).then((data) {
+    // Solo aquí habrá request real → prendemos loader una sola vez
+    _inFlight = LoadingRegistry.run(() async {
+      final data = await _fetchRemote(fields);
       _cache = data;
       _cacheAt = DateTime.now();
       return data;
