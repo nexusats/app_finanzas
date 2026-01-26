@@ -62,10 +62,17 @@ class TransactionsProvider extends ChangeNotifier {
   //   FETCH (DEDUPE + IF NEEDED)
   // ----------------------
 
+  static const Duration _ttl = Duration(minutes: 5);
+  DateTime? _lastFetchAt;
+
+  bool _isFresh() {
+    if (_lastFetchAt == null) return false;
+    return DateTime.now().difference(_lastFetchAt!) < _ttl;
+  }
+
   Future<void> fetchTransactionsIfNeeded({bool force = false}) async {
     if (_inFlight != null) return _inFlight!;
-
-    if (_loadedOnce && !force) return;
+    if (_loadedOnce && !force && _isFresh()) return;
 
     _inFlight = _loadFromApi().whenComplete(() => _inFlight = null);
     return _inFlight!;
@@ -90,6 +97,7 @@ class TransactionsProvider extends ChangeNotifier {
         );
 
       _loadedOnce = true;
+      _lastFetchAt = DateTime.now();
       await _saveTransactions();
     } catch (_) {
       // Si falla el API, nos quedamos con lo que haya en cache (ya está warm)

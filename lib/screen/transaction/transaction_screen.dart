@@ -25,9 +25,13 @@ class TransactionScreenState extends State<TransactionScreen> {
   @override
   void initState() {
     super.initState();
+
+    // meta (accounts/categories) con cache + dedupe
     _metaFuture = _loadMeta();
+
+    // movimientos: NO fuerces refresh; usa cache local y solo actualiza si hace falta
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<TransactionsProvider>().fetchTransactions();
+      context.read<TransactionsProvider>().fetchTransactionsIfNeeded();
     });
   }
 
@@ -263,7 +267,7 @@ class TransactionScreenState extends State<TransactionScreen> {
   }
 
   void _refreshTransactions() {
-    context.read<TransactionsProvider>().fetchTransactions();
+    context.read<TransactionsProvider>().fetchTransactions(force: true);
   }
 
   void _openEditModal(Transaction t) async {
