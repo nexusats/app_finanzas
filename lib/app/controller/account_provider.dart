@@ -1,12 +1,12 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:app_finanzas/app/model/account.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_finanzas/app/services/account_service.dart';
+import 'package:app_finanzas/app/services/local/local_database.dart';
+import 'package:app_finanzas/app/model/sync_status.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class AccountProvider with ChangeNotifier {
   final AccountService _accountService = AccountService();
-  static const String _storageKey = 'accounts';
 
   final List<Account> _accounts = [];
   bool _isLoading = false;
@@ -25,32 +25,15 @@ class AccountProvider with ChangeNotifier {
   }
 
   Future<void> _warmFromLocal() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_storageKey);
-
-    if (raw == null || raw.isEmpty) {
-      notifyListeners();
-      return;
-    }
-
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is List) {
-        _accounts
-          ..clear()
-          ..addAll(decoded.map((e) => Account.fromJson(e)).toList());
-      }
-    } catch (_) {
-      // ignore cache corrupto
-    }
-
+    final cached = await LocalDatabase.getAccounts();
+    _accounts
+      ..clear()
+      ..addAll(_visibleAccounts(cached));
     notifyListeners();
   }
 
   Future<void> _saveToLocal() async {
-    final prefs = await SharedPreferences.getInstance();
-    final encoded = jsonEncode(_accounts.map((e) => e.toJson()).toList());
-    await prefs.setString(_storageKey, encoded);
+    await LocalDatabase.saveAccounts(_accounts);
   }
 
   bool _isFresh() {
@@ -77,12 +60,31 @@ class AccountProvider with ChangeNotifier {
     }
 
     try {
+      if (!await _isOnline()) return;
       final response = await _accountService.getAccounts();
 
       // Lista vacía puede ser válida, no es “advertencia”
       _accounts
         ..clear()
-        ..addAll(response.map((e) => Account.fromJson(e)).toList());
+        ..addAll(
+          response
+              .map((e) => Account.fromJson(e))
+              .map(
+                (account) => Account(
+                  id: account.id,
+                  userId: account.userId,
+                  name: account.name,
+                  initialBalance: account.initialBalance,
+                  currentBalance: account.currentBalance,
+                  currentBalanceFormatted: account.currentBalanceFormatted,
+                  isArchived: account.isArchived,
+                  createdAt: account.createdAt,
+                  updatedAt: account.updatedAt,
+                  syncStatus: SyncStatus.synced,
+                ),
+              )
+              .toList(),
+        );
 
       _loadedOnce = true;
       _lastFetchAt = DateTime.now();
@@ -100,33 +102,92 @@ class AccountProvider with ChangeNotifier {
   // -------- CRUD --------
 
   Future<bool> createAccount(Map<String, dynamic> accountData) async {
-    final ok = await _accountService.createAccount(accountData);
-    if (ok) {
-      await refresh();
+    if (await _isOnline()) {
+      final ok = await _accountService.createAccount(accountData);
+      if (ok) {
+        await refresh();
+      }
+      return ok;
     }
-    return ok;
+
+    final tempId = -DateTime.now().millisecondsSinceEpoch;
+    final account = Account(
+      id: tempId,
+      name: (accountData['name'] ?? '').toString(),
+      initialBalance: accountData['initial_balance'] is num
+          ? (accountData['initial_balance'] as num).toDouble()
+          : double.tryParse(accountData['initial_balance']?.toString() ?? ''),
+      isArchived: accountData['is_archived'] as bool?,
+      syncStatus: SyncStatus.pendingCreate,
+    );
+    _accounts.add(account);
+    await LocalDatabase.upsertAccount(account);
+    notifyListeners();
+    return true;
   }
 
   Future<bool> updateAccount(int id, Map<String, dynamic> accountData) async {
-    final ok = await _accountService.updateAccount(id, accountData);
-    if (ok) {
-      await refresh();
+    if (await _isOnline()) {
+      final ok = await _accountService.updateAccount(id, accountData);
+      if (ok) {
+        await refresh();
+      }
+      return ok;
     }
-    return ok;
+
+    final index = _accounts.indexWhere((e) => e.id == id);
+    if (index == -1) return false;
+
+    final existing = _accounts[index];
+    final updated = Account(
+      id: existing.id,
+      userId: existing.userId,
+      name: (accountData['name'] ?? existing.name).toString(),
+      initialBalance: accountData['initial_balance'] is num
+          ? (accountData['initial_balance'] as num).toDouble()
+          : existing.initialBalance,
+      currentBalance: existing.currentBalance,
+      currentBalanceFormatted: existing.currentBalanceFormatted,
+      isArchived: accountData['is_archived'] as bool? ?? existing.isArchived,
+      createdAt: existing.createdAt,
+      updatedAt: DateTime.now(),
+      syncStatus: SyncStatus.pendingUpdate,
+    );
+    _accounts[index] = updated;
+    await LocalDatabase.upsertAccount(updated);
+    notifyListeners();
+    return true;
   }
 
   Future<void> removeAccount(Account account) async {
     // Optimista: quita local primero (UI rápida)
     _accounts.removeWhere((e) => e.id == account.id);
     notifyListeners();
-    await _saveToLocal();
 
+    if (!await _isOnline()) {
+      final pending = Account(
+        id: account.id,
+        userId: account.userId,
+        name: account.name,
+        initialBalance: account.initialBalance,
+        currentBalance: account.currentBalance,
+        currentBalanceFormatted: account.currentBalanceFormatted,
+        isArchived: account.isArchived,
+        createdAt: account.createdAt,
+        updatedAt: DateTime.now(),
+        syncStatus: SyncStatus.pendingDelete,
+      );
+      await LocalDatabase.upsertAccount(pending);
+      return;
+    }
+
+    if (account.id == null) return;
     final ok = await _accountService.deleteAccount(account.id!);
     if (!ok) {
-      // si falla, re-sincroniza
       await refresh();
     } else {
       _lastFetchAt = DateTime.now();
+      await LocalDatabase.removeAccount(account);
     }
   }
 
@@ -135,10 +196,18 @@ class AccountProvider with ChangeNotifier {
     _isLoading = false;
     _loadedOnce = false;
     _lastFetchAt = null;
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_storageKey);
-
+    await LocalDatabase.saveAccounts([]);
     notifyListeners();
+  }
+
+  List<Account> _visibleAccounts(List<Account> accounts) {
+    return accounts
+        .where((account) => account.syncStatus != SyncStatus.pendingDelete)
+        .toList();
+  }
+
+  Future<bool> _isOnline() async {
+    final result = await Connectivity().checkConnectivity();
+    return result != ConnectivityResult.none;
   }
 }

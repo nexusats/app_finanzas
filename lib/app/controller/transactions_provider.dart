@@ -1,15 +1,15 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:app_finanzas/app/model/transaction.dart';
 import 'package:app_finanzas/widgets/custom_snackbar.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_finanzas/app/services/transaction_service.dart';
+import 'package:app_finanzas/app/services/local/local_database.dart';
+import 'package:app_finanzas/app/model/sync_status.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class TransactionsProvider extends ChangeNotifier {
   final List<Transaction> _transactions = [];
   final TransactionService _transactionService = TransactionService();
 
-  SharedPreferences? _prefs;
   Transaction? _selectedTransaction;
 
   bool _isLoading = false; // UI loading (una sola fuente de verdad)
@@ -31,31 +31,15 @@ class TransactionsProvider extends ChangeNotifier {
   // ----------------------
 
   Future<void> _warmFromCache() async {
-    _prefs ??= await SharedPreferences.getInstance();
-    final stored = _prefs?.getStringList("_transactions");
-    if (stored == null || stored.isEmpty) return;
-
-    try {
-      final list = stored
-          .map((jsonStr) => Transaction.fromJson(jsonDecode(jsonStr)))
-          .toList();
-
-      _transactions
-        ..clear()
-        ..addAll(list);
-
-      notifyListeners(); // muestra algo rápido mientras el API llega después
-    } catch (_) {
-      // Si el cache está corrupto, no hacemos drama
-    }
+    final stored = await LocalDatabase.getTransactions();
+    _transactions
+      ..clear()
+      ..addAll(_visibleTransactions(stored));
+    notifyListeners();
   }
 
   Future<void> _saveTransactions() async {
-    _prefs ??= await SharedPreferences.getInstance();
-    await _prefs!.setStringList(
-      "_transactions",
-      _transactions.map((t) => jsonEncode(t.toJson())).toList(),
-    );
+    await LocalDatabase.saveTransactions(_transactions);
   }
 
   // ----------------------
@@ -88,12 +72,30 @@ class TransactionsProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      if (!await _isOnline()) return;
       final fetched = await _transactionService.getTransactions();
 
       _transactions
         ..clear()
         ..addAll(
-          fetched.map((e) => Transaction.fromJson(e as Map<String, dynamic>)),
+          fetched
+              .map((e) => Transaction.fromJson(e as Map<String, dynamic>))
+              .map(
+                (transaction) => Transaction(
+                  id: transaction.id,
+                  userId: transaction.userId,
+                  type: transaction.type,
+                  amount: transaction.amount,
+                  date: transaction.date,
+                  note: transaction.note,
+                  accountId: transaction.accountId,
+                  categoryId: transaction.categoryId,
+                  account: transaction.account,
+                  category: transaction.category,
+                  attachments: transaction.attachments,
+                  syncStatus: SyncStatus.synced,
+                ),
+              ),
         );
 
       _loadedOnce = true;
@@ -168,22 +170,49 @@ class TransactionsProvider extends ChangeNotifier {
   Future<void> addTransaction(
       BuildContext context, Transaction transaction) async {
     try {
-      final success =
-          await _transactionService.createTransaction(transaction.toJson());
+      if (await _isOnline()) {
+        final success =
+            await _transactionService.createTransaction(transaction.toJson());
+        if (!success) {
+          if (context.mounted) {
+            CustomSnackbar.show(context, "Error al agregar la transacción",
+                isError: true);
+          }
+          return;
+        }
 
-      if (!success) {
+        await fetchTransactions(force: true);
+
         if (context.mounted) {
-          CustomSnackbar.show(context, "Error al agregar la transacción",
-              isError: true);
+          CustomSnackbar.show(context, "Transacción agregada exitosamente");
         }
         return;
       }
 
-      // refresca desde API para traer id real y persistir cache
-      await fetchTransactions(force: true);
+      final tempId = -DateTime.now().millisecondsSinceEpoch;
+      final pending = Transaction(
+        id: transaction.id ?? tempId,
+        userId: transaction.userId,
+        type: transaction.type,
+        amount: transaction.amount,
+        date: transaction.date,
+        note: transaction.note,
+        accountId: transaction.accountId,
+        categoryId: transaction.categoryId,
+        account: transaction.account,
+        category: transaction.category,
+        attachments: transaction.attachments,
+        syncStatus: SyncStatus.pendingCreate,
+      );
+      _transactions.add(pending);
+      await LocalDatabase.upsertTransaction(pending);
+      notifyListeners();
 
       if (context.mounted) {
-        CustomSnackbar.show(context, "Transacción agregada exitosamente");
+        CustomSnackbar.show(
+          context,
+          "Transacción guardada sin conexión",
+        );
       }
     } catch (error) {
       if (context.mounted) {
@@ -196,14 +225,31 @@ class TransactionsProvider extends ChangeNotifier {
   Future<void> updateTransaction(
       BuildContext context, Transaction updatedTransaction) async {
     try {
-      final success = await _transactionService.updateTransaction(
-        updatedTransaction.id!,
-        updatedTransaction.toJson(),
-      );
+      if (await _isOnline()) {
+        final success = await _transactionService.updateTransaction(
+          updatedTransaction.id!,
+          updatedTransaction.toJson(),
+        );
 
-      if (!success) {
+        if (!success) {
+          if (context.mounted) {
+            CustomSnackbar.show(context, "Error al actualizar", isError: true);
+          }
+          return;
+        }
+
+        final index =
+            _transactions.indexWhere((t) => t.id == updatedTransaction.id);
+
+        if (index != -1) {
+          _transactions[index] = updatedTransaction;
+          _selectedTransaction = updatedTransaction;
+          await _saveTransactions();
+          notifyListeners();
+        }
+
         if (context.mounted) {
-          CustomSnackbar.show(context, "Error al actualizar", isError: true);
+          CustomSnackbar.show(context, "Transacción actualizada");
         }
         return;
       }
@@ -212,14 +258,31 @@ class TransactionsProvider extends ChangeNotifier {
           _transactions.indexWhere((t) => t.id == updatedTransaction.id);
 
       if (index != -1) {
-        _transactions[index] = updatedTransaction;
-        _selectedTransaction = updatedTransaction;
-        await _saveTransactions();
+        final pending = Transaction(
+          id: updatedTransaction.id,
+          userId: updatedTransaction.userId,
+          type: updatedTransaction.type,
+          amount: updatedTransaction.amount,
+          date: updatedTransaction.date,
+          note: updatedTransaction.note,
+          accountId: updatedTransaction.accountId,
+          categoryId: updatedTransaction.categoryId,
+          account: updatedTransaction.account,
+          category: updatedTransaction.category,
+          attachments: updatedTransaction.attachments,
+          syncStatus: SyncStatus.pendingUpdate,
+        );
+        _transactions[index] = pending;
+        _selectedTransaction = pending;
+        await LocalDatabase.upsertTransaction(pending);
         notifyListeners();
       }
 
       if (context.mounted) {
-        CustomSnackbar.show(context, "Transacción actualizada");
+        CustomSnackbar.show(
+          context,
+          "Transacción actualizada sin conexión",
+        );
       }
     } catch (e) {
       if (context.mounted) {
@@ -239,24 +302,51 @@ class TransactionsProvider extends ChangeNotifier {
     }
 
     try {
-      final ok = await _transactionService.deleteTransaction(transaction.id!);
-      if (!ok) {
+      if (await _isOnline()) {
+        final ok =
+            await _transactionService.deleteTransaction(transaction.id!);
+        if (!ok) {
+          if (context.mounted) {
+            CustomSnackbar.show(context, "Error al eliminar", isError: true);
+          }
+          return;
+        }
+
+        _transactions.removeWhere((t) => t.id == transaction.id);
+        await _saveTransactions();
+        notifyListeners();
+
+        await fetchTransactions(force: true);
+
         if (context.mounted) {
-          CustomSnackbar.show(context, "Error al eliminar", isError: true);
+          CustomSnackbar.show(context, "Transacción eliminada");
         }
         return;
       }
 
-      // Optimista: quítala local primero para UI rápida
       _transactions.removeWhere((t) => t.id == transaction.id);
-      await _saveTransactions();
+      final pending = Transaction(
+        id: transaction.id,
+        userId: transaction.userId,
+        type: transaction.type,
+        amount: transaction.amount,
+        date: transaction.date,
+        note: transaction.note,
+        accountId: transaction.accountId,
+        categoryId: transaction.categoryId,
+        account: transaction.account,
+        category: transaction.category,
+        attachments: transaction.attachments,
+        syncStatus: SyncStatus.pendingDelete,
+      );
+      await LocalDatabase.upsertTransaction(pending);
       notifyListeners();
 
-      // Luego refresca en segundo plano si quieres consistencia total:
-      await fetchTransactions(force: true);
-
       if (context.mounted) {
-        CustomSnackbar.show(context, "Transacción eliminada");
+        CustomSnackbar.show(
+          context,
+          "Transacción eliminada sin conexión",
+        );
       }
     } catch (e) {
       if (context.mounted) {
@@ -272,9 +362,18 @@ class TransactionsProvider extends ChangeNotifier {
     _loadedOnce = false;
     _isLoading = false;
 
-    _prefs ??= await SharedPreferences.getInstance();
-    await _prefs!.remove("_transactions");
-
+    await LocalDatabase.saveTransactions([]);
     notifyListeners();
+  }
+
+  List<Transaction> _visibleTransactions(List<Transaction> transactions) {
+    return transactions
+        .where((transaction) => transaction.syncStatus != SyncStatus.pendingDelete)
+        .toList();
+  }
+
+  Future<bool> _isOnline() async {
+    final result = await Connectivity().checkConnectivity();
+    return result != ConnectivityResult.none;
   }
 }

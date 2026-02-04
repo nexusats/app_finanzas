@@ -6,10 +6,13 @@ import 'package:shimmer/shimmer.dart';
 import 'package:app_finanzas/config/global.dart';
 import 'package:app_finanzas/screen/auth/login_screen.dart';
 import 'package:app_finanzas/app/controller/auth_provider.dart';
+import 'package:app_finanzas/app/controller/connectivity_provider.dart';
 import 'package:app_finanzas/screen/account/account_list_screen.dart';
 import 'package:app_finanzas/app/controller/transactions_provider.dart';
 import 'package:app_finanzas/screen/category/category_list_screen.dart';
 import 'package:app_finanzas/screen/transaction/transaction_screen.dart';
+import 'package:app_finanzas/app/services/local/local_database.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 // Si ya tienes GetSelectsService úsalo. Aquí lo dejo como placeholder:
 import 'package:app_finanzas/app/services/get_selects_service.dart';
@@ -40,6 +43,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _metaFuture = _loadMeta();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<TransactionsProvider>().fetchTransactionsIfNeeded();
+    });
 
     // Mantén esto si tu app lo necesita para otras pantallas
     // WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -48,31 +55,55 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<_HomeMeta> _loadMeta() async {
-    // Recomendado con tu endpoint:
-    // GET /api/v1/getData?fields=["accounts","categories"]
-    final raw = await GetSelectsService.fetchData(['accounts', 'categories']);
+    try {
+      final raw = await GetSelectsService.fetchData(['accounts', 'categories']);
+      final Map<String, dynamic> json = raw is Map<String, dynamic>
+          ? raw
+          : jsonDecode(raw.toString()) as Map<String, dynamic>;
 
-    // Algunos services devuelven {data:{...}}; otros directo.
-    final Map<String, dynamic> json = raw is Map<String, dynamic>
-        ? raw
-        : jsonDecode(raw.toString()) as Map<String, dynamic>;
+      final accountsJson =
+          (json['accounts'] ?? json['data']?['accounts'] ?? []) as List;
+      final categoriesJson =
+          (json['categories'] ?? json['data']?['categories'] ?? []) as List;
 
-    final accountsJson =
-        (json['accounts'] ?? json['data']?['accounts'] ?? []) as List;
-    final categoriesJson =
-        (json['categories'] ?? json['data']?['categories'] ?? []) as List;
+      final accounts = accountsJson
+          .whereType<Map<String, dynamic>>()
+          .map(AccountMeta.fromJson)
+          .toList();
 
-    final accounts = accountsJson
-        .whereType<Map<String, dynamic>>()
-        .map(AccountMeta.fromJson)
-        .toList();
+      final categories = categoriesJson
+          .whereType<Map<String, dynamic>>()
+          .map(CategoryMeta.fromJson)
+          .toList();
 
-    final categories = categoriesJson
-        .whereType<Map<String, dynamic>>()
-        .map(CategoryMeta.fromJson)
-        .toList();
+      return _HomeMeta(accounts: accounts, categories: categories);
+    } catch (_) {
+      final localAccounts = await LocalDatabase.getAccounts();
+      final localCategories = await LocalDatabase.getCategories();
 
-    return _HomeMeta(accounts: accounts, categories: categories);
+      return _HomeMeta(
+        accounts: localAccounts
+            .map(
+              (account) => AccountMeta(
+                id: account.id ?? 0,
+                name: account.name,
+                currentBalance: account.currentBalance ?? 0,
+                currentBalanceFormatted:
+                    account.currentBalanceFormatted ?? '0.00',
+              ),
+            )
+            .toList(),
+        categories: localCategories
+            .map(
+              (category) => CategoryMeta(
+                id: category.id ?? 0,
+                name: category.name,
+                type: category.type ?? '',
+              ),
+            )
+            .toList(),
+      );
+    }
   }
 
   @override
@@ -163,6 +194,7 @@ class _HomeScreenState extends State<HomeScreen> {
       future: _metaFuture,
       builder: (context, snap) {
         final isLoading = snap.connectionState == ConnectionState.waiting;
+        final connectivity = context.watch<ConnectivityProvider>();
 
         // Contenedor base (misma UI que ya tienes)
         return Container(
@@ -177,6 +209,8 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              _buildOfflineBanner(connectivity),
+              const SizedBox(height: 8),
               // HEADER
               if (isLoading)
                 _titleSkeleton(width: 220, height: 18)
@@ -291,6 +325,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             ],
                           ),
                         ],
+
+                        const SizedBox(height: 18),
+
+                        _buildAnalyticsSection(),
 
                         const SizedBox(height: 18),
 
@@ -520,6 +558,170 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildOfflineBanner(ConnectivityProvider connectivity) {
+    if (connectivity.isOnline) {
+      return Row(
+        children: [
+          const Icon(Icons.cloud_done_outlined, color: Colors.green),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              connectivity.lastSyncAt == null
+                  ? "Sincronización completa"
+                  : "Última sincronización: ${_formatDate(connectivity.lastSyncAt!)}",
+              style: const TextStyle(fontSize: 12, color: Colors.black54),
+            ),
+          ),
+          TextButton(
+            onPressed: connectivity.manualSync,
+            child: const Text("Sincronizar"),
+          ),
+        ],
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.cloud_off_rounded, color: Colors.orange),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              "Estás en modo offline. Guardaremos cambios para sincronizar luego.",
+              style: TextStyle(fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAnalyticsSection() {
+    return Consumer<TransactionsProvider>(
+      builder: (context, provider, _) {
+        final income = provider.getTotalIncomes();
+        final expense = provider.getTotalExpenses();
+        final balance = provider.getBalance();
+
+        final total = income + expense;
+        final incomeShare = total == 0 ? 0.0 : income / total;
+        final expenseShare = total == 0 ? 0.0 : expense / total;
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey[50],
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.withOpacity(0.2)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Análisis rápido",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  SizedBox(
+                    width: 120,
+                    height: 120,
+                    child: PieChart(
+                      PieChartData(
+                        sectionsSpace: 2,
+                        centerSpaceRadius: 30,
+                        sections: [
+                          PieChartSectionData(
+                            color: Colors.green[400],
+                            value: incomeShare * 100,
+                            title: "Ingresos",
+                            radius: 30,
+                            titleStyle: const TextStyle(fontSize: 10),
+                          ),
+                          PieChartSectionData(
+                            color: Colors.red[300],
+                            value: expenseShare * 100,
+                            title: "Gastos",
+                            radius: 30,
+                            titleStyle: const TextStyle(fontSize: 10),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _metricRow(
+                          label: "Balance",
+                          value: balance.toStringAsFixed(2),
+                          color: balance >= 0 ? Colors.green : Colors.red,
+                        ),
+                        const SizedBox(height: 6),
+                        _metricRow(
+                          label: "Ingresos",
+                          value: income.toStringAsFixed(2),
+                          color: Colors.green,
+                        ),
+                        const SizedBox(height: 6),
+                        _metricRow(
+                          label: "Gastos",
+                          value: expense.toStringAsFixed(2),
+                          color: Colors.red,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _metricRow({
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Row(
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+        Text(value),
+      ],
+    );
+  }
+
+  String _formatDate(DateTime dateTime) {
+    return "${dateTime.day.toString().padLeft(2, '0')}/"
+        "${dateTime.month.toString().padLeft(2, '0')}/"
+        "${dateTime.year} "
+        "${dateTime.hour.toString().padLeft(2, '0')}:"
+        "${dateTime.minute.toString().padLeft(2, '0')}";
   }
 }
 

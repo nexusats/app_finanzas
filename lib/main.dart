@@ -11,6 +11,8 @@ import 'package:app_finanzas/app/controller/auth_provider.dart';
 import 'package:app_finanzas/app/controller/account_provider.dart';
 import 'package:app_finanzas/app/controller/category_provider.dart';
 import 'package:app_finanzas/app/controller/transactions_provider.dart';
+import 'package:app_finanzas/app/controller/connectivity_provider.dart';
+import 'package:app_finanzas/app/services/local/local_database.dart';
 
 import 'package:app_finanzas/widgets/global_loading_overlay.dart';
 
@@ -21,6 +23,7 @@ Future<void> main() async {
 
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: envFile);
+  await LocalDatabase.init();
 
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
@@ -43,13 +46,23 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => TransactionsProvider()),
         ChangeNotifierProvider(create: (_) => CategoryProvider()),
         ChangeNotifierProvider(create: (_) => AccountProvider()),
+        ChangeNotifierProvider(create: (_) => ConnectivityProvider()),
       ],
       child: Consumer<AuthProvider>(
         builder: (context, authProvider, _) {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             title: 'Gestiona tus finanzas',
-            theme: ThemeData.dark().copyWith(
+            themeMode: ThemeMode.system,
+            theme: ThemeData(
+              useMaterial3: true,
+              colorSchemeSeed: Pallete.accentColor,
+              brightness: Brightness.light,
+            ),
+            darkTheme: ThemeData(
+              useMaterial3: true,
+              colorSchemeSeed: Pallete.accentColor,
+              brightness: Brightness.dark,
               scaffoldBackgroundColor: Pallete.backgroundColor,
             ),
             builder: (context, child) {
