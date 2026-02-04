@@ -1,3 +1,5 @@
+import 'package:app_finanzas/app/model/sync_status.dart';
+
 class Account {
   final int? id;
   final int? userId;
@@ -15,6 +17,7 @@ class Account {
 
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final SyncStatus syncStatus;
 
   Account({
     this.id,
@@ -26,6 +29,7 @@ class Account {
     this.isArchived,
     this.createdAt,
     this.updatedAt,
+    this.syncStatus = SyncStatus.synced,
   });
 
   factory Account.fromJson(Map<String, dynamic> json) {
@@ -57,6 +61,7 @@ class Account {
       isArchived: _toBool(json['is_archived']),
       createdAt: _toDate(json['created_at']),
       updatedAt: _toDate(json['updated_at']),
+      syncStatus: syncStatusFromString(json['sync_status']?.toString()),
     );
   }
 
@@ -69,6 +74,21 @@ class Account {
       'name': name,
       if (initialBalance != null) 'initial_balance': initialBalance,
       if (isArchived != null) 'is_archived': isArchived,
+    };
+  }
+
+  Map<String, dynamic> toStorageJson() {
+    return {
+      'id': id,
+      'user_id': userId,
+      'name': name,
+      'initial_balance': initialBalance,
+      'current_balance': currentBalance,
+      'current_balance_formatted': currentBalanceFormatted,
+      'is_archived': isArchived,
+      'created_at': createdAt?.toIso8601String(),
+      'updated_at': updatedAt?.toIso8601String(),
+      'sync_status': syncStatusToString(syncStatus),
     };
   }
 }

@@ -1,12 +1,12 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_finanzas/app/model/category.dart';
 import 'package:app_finanzas/app/services/category_service.dart';
+import 'package:app_finanzas/app/services/local/local_database.dart';
+import 'package:app_finanzas/app/model/sync_status.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class CategoryProvider extends ChangeNotifier {
   final CategoryService _categoryService = CategoryService();
-  static const String _storageKey = 'categories';
 
   final List<Category> _categories = [];
   bool _isLoading = false;
@@ -27,32 +27,15 @@ class CategoryProvider extends ChangeNotifier {
   }
 
   Future<void> _warmFromLocal() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_storageKey);
-
-    if (raw == null || raw.isEmpty) {
-      notifyListeners();
-      return;
-    }
-
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is List) {
-        _categories
-          ..clear()
-          ..addAll(decoded.map((e) => Category.fromJson(e)).toList());
-      }
-    } catch (_) {
-      // cache corrupto? lo ignoramos
-    }
-
+    final cached = await LocalDatabase.getCategories();
+    _categories
+      ..clear()
+      ..addAll(_visibleCategories(cached));
     notifyListeners();
   }
 
   Future<void> _saveToLocal() async {
-    final prefs = await SharedPreferences.getInstance();
-    final encoded = jsonEncode(_categories.map((e) => e.toJson()).toList());
-    await prefs.setString(_storageKey, encoded);
+    await LocalDatabase.saveCategories(_categories);
   }
 
   bool _isFresh() {
@@ -83,12 +66,29 @@ class CategoryProvider extends ChangeNotifier {
     }
 
     try {
+      if (!await _isOnline()) return;
       final response = await _categoryService.getCategories();
 
       // OJO: lista vacía puede ser válida. No lo trates como error.
       _categories
         ..clear()
-        ..addAll(response.map((e) => Category.fromJson(e)).toList());
+        ..addAll(
+          response
+              .map((e) => Category.fromJson(e))
+              .map(
+                (category) => Category(
+                  id: category.id,
+                  name: category.name,
+                  type: category.type,
+                  icon: category.icon,
+                  isArchived: category.isArchived,
+                  createdAt: category.createdAt,
+                  updatedAt: category.updatedAt,
+                  syncStatus: SyncStatus.synced,
+                ),
+              )
+              .toList(),
+        );
 
       _loadedOnce = true;
       _lastFetchAt = DateTime.now();
@@ -109,35 +109,83 @@ class CategoryProvider extends ChangeNotifier {
   // -------- CRUD (optimista + refresh controlado) --------
 
   Future<bool> createCategory(Map<String, dynamic> categoryData) async {
-    final ok = await _categoryService.createCategory(categoryData);
-    if (ok) {
-      // Trae el listado real (ids, orden, etc)
-      await refresh();
+    if (await _isOnline()) {
+      final ok = await _categoryService.createCategory(categoryData);
+      if (ok) {
+        await refresh();
+      }
+      return ok;
     }
-    return ok;
+
+    final tempId = -DateTime.now().millisecondsSinceEpoch;
+    final category = Category(
+      id: tempId,
+      name: (categoryData['name'] ?? '').toString(),
+      type: categoryData['type']?.toString(),
+      icon: categoryData['icon']?.toString(),
+      syncStatus: SyncStatus.pendingCreate,
+    );
+    _categories.add(category);
+    await LocalDatabase.upsertCategory(category);
+    notifyListeners();
+    return true;
   }
 
   Future<bool> updateCategory(int id, Map<String, dynamic> categoryData) async {
-    final ok = await _categoryService.updateCategory(id, categoryData);
-    if (ok) {
-      await refresh();
+    if (await _isOnline()) {
+      final ok = await _categoryService.updateCategory(id, categoryData);
+      if (ok) {
+        await refresh();
+      }
+      return ok;
     }
-    return ok;
+
+    final index = _categories.indexWhere((e) => e.id == id);
+    if (index == -1) return false;
+
+    final existing = _categories[index];
+    final updated = Category(
+      id: existing.id,
+      name: (categoryData['name'] ?? existing.name).toString(),
+      type: categoryData['type']?.toString() ?? existing.type,
+      icon: categoryData['icon']?.toString() ?? existing.icon,
+      isArchived: categoryData['is_archived'] as bool? ?? existing.isArchived,
+      createdAt: existing.createdAt,
+      updatedAt: DateTime.now(),
+      syncStatus: SyncStatus.pendingUpdate,
+    );
+    _categories[index] = updated;
+    await LocalDatabase.upsertCategory(updated);
+    notifyListeners();
+    return true;
   }
 
   Future<void> removeCategory(Category category) async {
     // Optimista: quita local primero (UI rápida)
     _categories.removeWhere((e) => e.id == category.id);
     notifyListeners();
-    await _saveToLocal();
+    if (!await _isOnline()) {
+      final pending = Category(
+        id: category.id,
+        name: category.name,
+        type: category.type,
+        icon: category.icon,
+        isArchived: category.isArchived,
+        createdAt: category.createdAt,
+        updatedAt: DateTime.now(),
+        syncStatus: SyncStatus.pendingDelete,
+      );
+      await LocalDatabase.upsertCategory(pending);
+      return;
+    }
 
+    if (category.id == null) return;
     final ok = await _categoryService.deleteCategory(category.id!);
     if (!ok) {
-      // si falló, re-sincroniza
       await refresh();
     } else {
-      // marca fetch reciente para no volver a pedir inmediatamente
       _lastFetchAt = DateTime.now();
+      await LocalDatabase.removeCategory(category);
     }
   }
 
@@ -146,10 +194,18 @@ class CategoryProvider extends ChangeNotifier {
     _isLoading = false;
     _loadedOnce = false;
     _lastFetchAt = null;
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_storageKey);
-
+    await LocalDatabase.saveCategories([]);
     notifyListeners();
+  }
+
+  List<Category> _visibleCategories(List<Category> categories) {
+    return categories
+        .where((category) => category.syncStatus != SyncStatus.pendingDelete)
+        .toList();
+  }
+
+  Future<bool> _isOnline() async {
+    final result = await Connectivity().checkConnectivity();
+    return result != ConnectivityResult.none;
   }
 }

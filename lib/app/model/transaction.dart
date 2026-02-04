@@ -1,3 +1,5 @@
+import 'package:app_finanzas/app/model/sync_status.dart';
+
 class Transaction {
   final int? id;
   final int? userId;
@@ -20,6 +22,7 @@ class Transaction {
 
   /// Adjuntos (si los estás retornando)
   final List<TransactionAttachment> attachments;
+  final SyncStatus syncStatus;
 
   Transaction({
     this.id,
@@ -33,6 +36,7 @@ class Transaction {
     this.account,
     this.category,
     this.attachments = const [],
+    this.syncStatus = SyncStatus.synced,
   });
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
@@ -73,6 +77,7 @@ class Transaction {
           ? CategoryMini.fromJson(categoryJson)
           : null,
       attachments: atts,
+      syncStatus: syncStatusFromString(json['sync_status']?.toString()),
     );
   }
 
@@ -81,13 +86,40 @@ class Transaction {
   /// attachment_ids (si lo manejas) lo mandas desde el provider, no desde el modelo.
   Map<String, dynamic> toJson() {
     return {
-      "id": id,
+      if (id != null && id! > 0) "id": id,
       "type": type,
       "amount": amount,
       "account_id": accountId,
       "category_id": categoryId,
       "date": _toApiDate(date), // "YYYY-MM-DD"
       "note": note,
+    };
+  }
+
+  Map<String, dynamic> toStorageJson() {
+    return {
+      "id": id,
+      "user_id": userId,
+      "type": type,
+      "amount": amount,
+      "account_id": accountId,
+      "category_id": categoryId,
+      "date": date.toIso8601String(),
+      "note": note,
+      "account": account != null
+          ? {"id": account!.id, "name": account!.name}
+          : null,
+      "category": category != null
+          ? {
+              "id": category!.id,
+              "name": category!.name,
+              "type": category!.type,
+            }
+          : null,
+      "attachments": attachments
+          .map((a) => {"id": a.id, "path": a.path})
+          .toList(),
+      "sync_status": syncStatusToString(syncStatus),
     };
   }
 
