@@ -43,7 +43,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _metaFuture = _loadMeta();
-    context.read<TransactionsProvider>().fetchTransactionsIfNeeded();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<TransactionsProvider>().fetchTransactionsIfNeeded();
+    });
 
     // Mantén esto si tu app lo necesita para otras pantallas
     // WidgetsBinding.instance.addPostFrameCallback((_) {
